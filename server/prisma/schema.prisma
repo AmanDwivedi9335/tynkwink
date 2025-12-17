@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+
+
+
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  SUPERADMIN
+  TENANT_ADMIN
+  SALES_ADMIN
+  SALES_EXEC
+}
+
+enum InboundSource {
+  EMAIL
+  INDIAMART
+  EXCEL
+  WHATSAPP
+  MANUAL
+}
+
+enum InboundStatus {
+  PENDING_CONFIRMATION
+  IMPORTED
+  JUNK
+}
+
+model Tenant{
+  id String @id @default(cuid())
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+  leadStages LeadStage[]
+  leads Lead[]
+  inbound InboundItem[]
+  settings TenantSetting?
+}
+
+model TenantSetting {
+  tenantId String @id
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  // Used to validate inbound confirm links
+  inboundSecret String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id String @id @default(cuid())
+  tenantId String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String
+  email        String
+  passwordHash String
+  role         UserRole @default(SALES_EXEC)
+  isActive     Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId]) 
+  leads Lead[]
+  inboundDecisions InboundDecision[]
+}
+
+model LeadStage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  position  Int
+  isDeleted Boolean  @default(false)
+
+  leads Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId, position])
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  stageId     String
+  stage       LeadStage @relation(fields: [stageId], references: [id])
+
+  name        String?
+  phone       String?
+  email       String?
+  company     String?
+  notes       String?
+
+  source      InboundSource
+  assignedTo  String?
+  assignedUser User? @relation(fields: [assignedTo], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, stageId])
+  @@index([tenantId, phone])
+  @@index([tenantId, email])
+}
+
+model InboundItem {
+  id        String        @id @default(cuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id])
+
+  source    InboundSource
+  status    InboundStatus @default(PENDING_CONFIRMATION)
+
+  // Raw payload to keep everything
+  payload   Json
+
+  // Parsed fields (optional but helpful for viewing)
+  name      String?
+  phone     String?
+  email     String?
+  company   String?
+
+  // Token used for email confirmation action
+  confirmToken String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  decision InboundDecision?
+
+  @@index([tenantId, status])
+  @@index([tenantId, source])
+}
+
+model InboundDecision {
+  id          String   @id @default(cuid())
+  inboundId   String   @unique
+  inbound     InboundItem @relation(fields: [inboundId], references: [id])
+
+  action      InboundStatus // IMPORTED or JUNK
+  decidedBy   String?
+  decidedUser User? @relation(fields: [decidedBy], references: [id])
+
+  decidedAt   DateTime @default(now())
+  note        String?
+}

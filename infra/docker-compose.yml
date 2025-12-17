@@ -1,0 +1,24 @@
+version: "1.0"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: tynkwink-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: tynkwink_crm
+      MYSQL_USER: tynkwink
+      MYSQL_PASSWORD: tynkwink123
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7
+    container_name: tynkwink-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  mysql_data:
