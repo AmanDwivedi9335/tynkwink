@@ -77,7 +77,7 @@ export default function LoginPage() {
         bgcolor: (t) => t.palette.grey[50],
       }}
     >
-      <Container maxWidth="sm">
+      <Container maxWidth="sm" sx={{ display: "grid", gap: 2 }}>
         <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
             <Box
@@ -183,6 +183,21 @@ export default function LoginPage() {
             <Typography variant="caption" color="text.secondary" textAlign="center" sx={{ mt: 1 }}>
               By continuing, you agree to the Terms and Privacy Policy.
             </Typography>
+          </Box>
+        </Paper>
+
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
+          <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+            Tenant login guide
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Use these steps when a tenant workspace is created for you.
+          </Typography>
+          <Box component="ol" sx={{ pl: 3, m: 0, color: "text.secondary" }}>
+            <li>Enter the admin email shared by your super admin.</li>
+            <li>Use the temporary password from the tenant creation email.</li>
+            <li>Add the Tenant ID (workspace slug) if you have multiple workspaces.</li>
+            <li>Reset your password after signing in.</li>
           </Box>
         </Paper>
       </Container>
