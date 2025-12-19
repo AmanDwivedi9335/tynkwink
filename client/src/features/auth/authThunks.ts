@@ -8,7 +8,7 @@ export const loginThunk = createAsyncThunk<
   { rejectValue: string }
 >("auth/login", async (payload, { rejectWithValue }) => {
   try {
-    const res = await api.post("/auth/login", payload);
+    const res = await api.post("/api/auth/login", payload);
     return res.data as LoginResponse;
   } catch (err: any) {
     const msg =
