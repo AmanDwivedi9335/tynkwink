@@ -1,0 +1,184 @@
+import * as React from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Container,
+  Divider,
+  InputAdornment,
+  Paper,
+  TextField,
+  Typography,
+} from "@mui/material";
+import LockIcon from "@mui/icons-material/Lock";
+import EmailIcon from "@mui/icons-material/Email";
+import BusinessIcon from "@mui/icons-material/Business";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { loginThunk } from "../features/auth/authThunks";
+import { selectAuthError, selectAuthStatus, selectIsAuthenticated } from "../features/auth/authSelectors";
+import { useNavigate } from "react-router-dom";
+
+const LoginSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  tenantId: z.string().optional().or(z.literal("")),
+});
+
+type LoginForm = z.infer<typeof LoginSchema>;
+
+export default function LoginPage() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
+  const status = useAppSelector(selectAuthStatus);
+  const error = useAppSelector(selectAuthError);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
+    resolver: zodResolver(LoginSchema),
+    defaultValues: { email: "", password: "", tenantId: "" },
+  });
+
+  React.useEffect(() => {
+    if (isAuthenticated) navigate("/app", { replace: true });
+  }, [isAuthenticated, navigate]);
+
+  const onSubmit = async (values: LoginForm) => {
+    const payload = {
+      email: values.email.trim(),
+      password: values.password,
+      tenantId: values.tenantId?.trim() ? values.tenantId.trim() : undefined,
+    };
+
+    const res = await dispatch(loginThunk(payload));
+    if (loginThunk.fulfilled.match(res)) {
+      navigate("/app", { replace: true });
+    }
+  };
+
+  const loading = status === "loading";
+
+  return (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        bgcolor: (t) => t.palette.grey[50],
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 2,
+                display: "grid",
+                placeItems: "center",
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+              }}
+            >
+              <LockIcon />
+            </Box>
+            <Box>
+              <Typography variant="h5" fontWeight={800}>
+                Sign in
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Access your workspace
+              </Typography>
+            </Box>
+          </Box>
+
+          {error ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          ) : null}
+
+          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: "grid", gap: 2 }}>
+            <TextField
+              label="Email"
+              fullWidth
+              autoComplete="email"
+              error={!!errors.email}
+              helperText={errors.email?.message}
+              {...register("email")}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <TextField
+              label="Password"
+              type="password"
+              fullWidth
+              autoComplete="current-password"
+              error={!!errors.password}
+              helperText={errors.password?.message}
+              {...register("password")}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <TextField
+              label="Tenant ID (optional)"
+              fullWidth
+              autoComplete="off"
+              error={!!errors.tenantId}
+              helperText={errors.tenantId?.message || "Leave blank if your account belongs to a single workspace."}
+              {...register("tenantId")}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <BusinessIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={loading}
+              sx={{ py: 1.2, fontWeight: 800, borderRadius: 2 }}
+            >
+              {loading ? "Signing in..." : "Sign in"}
+            </Button>
+
+            <Divider />
+
+            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+              <Typography component="a" href="/forgot-password" variant="body2" sx={{ textDecoration: "none" }}>
+                Forgot password?
+              </Typography>
+              <Typography component="a" href="/register" variant="body2" sx={{ textDecoration: "none" }}>
+                Create account
+              </Typography>
+            </Box>
+
+            <Typography variant="caption" color="text.secondary" textAlign="center" sx={{ mt: 1 }}>
+              By continuing, you agree to the Terms and Privacy Policy.
+            </Typography>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
+  );
+}
