@@ -5,12 +5,15 @@ import {
   Badge,
   Box,
   Button,
+  ButtonBase,
   Divider,
   IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Toolbar,
@@ -28,9 +31,11 @@ import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import MonetizationOnOutlinedIcon from "@mui/icons-material/MonetizationOnOutlined";
-import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAppSelector } from "../app/hooks";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { selectIsAuthenticated } from "../features/auth/authSelectors";
+import { logout } from "../features/auth/authSlice";
 
 const navItems = [
   { label: "Dashboard", icon: <DashboardIcon />, to: "/app" },
@@ -45,11 +50,14 @@ const navItems = [
 ];
 
 export default function TenantLayout() {
+  const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const role = useAppSelector((state) => state.auth.role);
   const user = useAppSelector((state) => state.auth.user);
   const tenantId = useAppSelector((state) => state.auth.tenantId);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [userMenuAnchor, setUserMenuAnchor] = React.useState<null | HTMLElement>(null);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -60,6 +68,26 @@ export default function TenantLayout() {
   }
 
   const displayName = user?.name || user?.fullName || user?.email || "Tenant Admin";
+  const isUserMenuOpen = Boolean(userMenuAnchor);
+
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleProfileSettings = () => {
+    handleUserMenuClose();
+    navigate("/app/profile");
+  };
+
+  const handleLogout = () => {
+    handleUserMenuClose();
+    dispatch(logout());
+    navigate("/login", { replace: true });
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f4f6fb", display: "flex" }}>
@@ -183,19 +211,48 @@ export default function TenantLayout() {
                 </IconButton>
               </Tooltip>
               <Divider orientation="vertical" flexItem />
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Badge color="primary" variant="dot">
-                  <Avatar>{displayName.charAt(0)}</Avatar>
-                </Badge>
-                <Box>
-                  <Typography fontWeight={700} variant="body2">
-                    {displayName}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {tenantId ? `Workspace • ${tenantId}` : "Workspace"}
-                  </Typography>
-                </Box>
-              </Stack>
+              <ButtonBase
+                onClick={handleUserMenuOpen}
+                sx={{ borderRadius: 2, textAlign: "left", px: 1, py: 0.5 }}
+                aria-controls={isUserMenuOpen ? "tenant-user-menu" : undefined}
+                aria-haspopup="true"
+                aria-expanded={isUserMenuOpen ? "true" : undefined}
+              >
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Badge color="primary" variant="dot">
+                    <Avatar>{displayName.charAt(0)}</Avatar>
+                  </Badge>
+                  <Box>
+                    <Typography fontWeight={700} variant="body2">
+                      {displayName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {tenantId ? `Workspace • ${tenantId}` : "Workspace"}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </ButtonBase>
+              <Menu
+                id="tenant-user-menu"
+                anchorEl={userMenuAnchor}
+                open={isUserMenuOpen}
+                onClose={handleUserMenuClose}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "right" }}
+              >
+                <MenuItem onClick={handleProfileSettings}>
+                  <ListItemIcon>
+                    <SettingsOutlinedIcon fontSize="small" />
+                  </ListItemIcon>
+                  Profile settings
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <LogoutOutlinedIcon fontSize="small" />
+                  </ListItemIcon>
+                  Logout
+                </MenuItem>
+              </Menu>
             </Stack>
           </Toolbar>
         </AppBar>

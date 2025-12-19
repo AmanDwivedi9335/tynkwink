@@ -1,10 +1,14 @@
-import { NavLink, Outlet } from "react-router-dom";
+import * as React from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Avatar,
   Box,
   Divider,
   Drawer,
+  ListItemIcon,
+  Menu,
+  MenuItem,
   List,
   ListItem,
   ListItemButton,
@@ -12,7 +16,10 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { useAppSelector } from "../app/hooks";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { logout } from "../features/auth/authSlice";
 
 const drawerWidth = 240;
 
@@ -22,7 +29,30 @@ const navItems = [
 ];
 
 export default function SuperAdminLayout() {
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const navigate = useNavigate();
+  const [userMenuAnchor, setUserMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const isUserMenuOpen = Boolean(userMenuAnchor);
+
+  const handleUserMenuOpen = (anchor: HTMLElement) => {
+    setUserMenuAnchor(anchor);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleProfileSettings = () => {
+    handleUserMenuClose();
+    navigate("/superamanpanel/profile");
+  };
+
+  const handleLogout = () => {
+    handleUserMenuClose();
+    dispatch(logout());
+    navigate("/login", { replace: true });
+  };
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -41,7 +71,20 @@ export default function SuperAdminLayout() {
           <Typography variant="h6" fontWeight={700}>
             Super Admin Panel
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box
+            sx={{ display: "flex", alignItems: "center", gap: 1.5, cursor: "pointer" }}
+            onClick={(event) => handleUserMenuOpen(event.currentTarget)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                handleUserMenuOpen(event.currentTarget);
+              }
+            }}
+            aria-controls={isUserMenuOpen ? "superadmin-user-menu" : undefined}
+            aria-haspopup="true"
+            aria-expanded={isUserMenuOpen ? "true" : undefined}
+          >
             <Avatar sx={{ width: 32, height: 32 }}>
               {user?.name ? user.name.charAt(0).toUpperCase() : "S"}
             </Avatar>
@@ -54,6 +97,27 @@ export default function SuperAdminLayout() {
               </Typography>
             </Box>
           </Box>
+          <Menu
+            id="superadmin-user-menu"
+            anchorEl={userMenuAnchor}
+            open={isUserMenuOpen}
+            onClose={handleUserMenuClose}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+          >
+            <MenuItem onClick={handleProfileSettings}>
+              <ListItemIcon>
+                <SettingsOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              Profile settings
+            </MenuItem>
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              Logout
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 
