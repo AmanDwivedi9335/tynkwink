@@ -3,6 +3,10 @@ import {
   Button,
   Chip,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   InputAdornment,
   MenuItem,
   Paper,
@@ -20,7 +24,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
 
 type CrmStage = {
@@ -300,6 +304,18 @@ export default function CrmPage() {
   const [leads, setLeads] = useState<CrmLead[]>([]);
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [addLeadError, setAddLeadError] = useState<string | null>(null);
+  const [leadForm, setLeadForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    company: "",
+    createdAt: "",
+    stageId: "",
+    notes: "",
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -350,6 +366,61 @@ export default function CrmPage() {
     setLeads((prev) =>
       prev.map((lead) => (lead.id === leadId ? { ...lead, stageId: nextStageId } : lead))
     );
+  };
+
+  const handleOpenAddLead = () => {
+    setAddLeadError(null);
+    setLeadForm({
+      name: "",
+      phone: "",
+      email: "",
+      company: "",
+      createdAt: "",
+      stageId: selectedStageId ?? stages[0]?.id ?? "",
+      notes: "",
+    });
+    setIsAddLeadOpen(true);
+  };
+
+  const handleCloseAddLead = () => {
+    if (isSubmittingLead) return;
+    setIsAddLeadOpen(false);
+  };
+
+  const handleAddLeadSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAddLeadError(null);
+
+    if (!leadForm.name.trim()) {
+      setAddLeadError("Lead name is required.");
+      return;
+    }
+
+    setIsSubmittingLead(true);
+
+    try {
+      const payload = {
+        name: leadForm.name.trim(),
+        phone: leadForm.phone.trim() || undefined,
+        email: leadForm.email.trim() || undefined,
+        company: leadForm.company.trim() || undefined,
+        createdAt: leadForm.createdAt || undefined,
+        stageId: leadForm.stageId || undefined,
+        notes: leadForm.notes.trim() || undefined,
+      };
+
+      const response = await api.post<{ lead: CrmLead }>("/api/crm/leads", payload);
+      setLeads((prev) => [response.data.lead, ...prev]);
+      if (!selectedStageId) {
+        setSelectedStageId(response.data.lead.stageId);
+      }
+      setIsAddLeadOpen(false);
+    } catch (error: any) {
+      const message = error?.response?.data?.message ?? "Unable to add lead.";
+      setAddLeadError(message);
+    } finally {
+      setIsSubmittingLead(false);
+    }
   };
 
   return (
@@ -457,6 +528,7 @@ export default function CrmPage() {
                 textTransform: "none",
                 width: { xs: "100%", sm: "auto" },
               }}
+              onClick={handleOpenAddLead}
             >
               + Add New Lead
             </Button>
@@ -559,18 +631,18 @@ export default function CrmPage() {
                     <Stack spacing={0.5}>
                       <Typography fontWeight={600}>{lead.personal.name}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {lead.personal.email}
+                        {lead.personal.email || "—"}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {lead.personal.phone}
+                        {lead.personal.phone || "—"}
                       </Typography>
                     </Stack>
                   </TableCell>
                   <TableCell>
                     <Stack spacing={0.5}>
-                      <Typography fontWeight={600}>{lead.company.name}</Typography>
+                      <Typography fontWeight={600}>{lead.company.name || "—"}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {lead.company.size} • {lead.company.location}
+                        {[lead.company.size, lead.company.location].filter(Boolean).join(" • ") || "—"}
                       </Typography>
                     </Stack>
                   </TableCell>
@@ -639,6 +711,81 @@ export default function CrmPage() {
           </Table>
         </TableContainer>
       </Paper>
+
+      <Dialog open={isAddLeadOpen} onClose={handleCloseAddLead} fullWidth maxWidth="sm">
+        <DialogTitle>Add New Lead</DialogTitle>
+        <Box component="form" onSubmit={handleAddLeadSubmit}>
+          <DialogContent sx={{ display: "grid", gap: 2 }}>
+            <TextField
+              label="Name"
+              placeholder="Enter Name"
+              required
+              value={leadForm.name}
+              onChange={(event) => setLeadForm((prev) => ({ ...prev, name: event.target.value }))}
+            />
+            <TextField
+              label="Phone"
+              placeholder="Enter WhatsApp Number"
+              value={leadForm.phone}
+              onChange={(event) => setLeadForm((prev) => ({ ...prev, phone: event.target.value }))}
+            />
+            <TextField
+              label="Email"
+              placeholder="Enter Email"
+              type="email"
+              value={leadForm.email}
+              onChange={(event) => setLeadForm((prev) => ({ ...prev, email: event.target.value }))}
+            />
+            <TextField
+              label="Company"
+              placeholder="Enter Company"
+              value={leadForm.company}
+              onChange={(event) => setLeadForm((prev) => ({ ...prev, company: event.target.value }))}
+            />
+            <TextField
+              label="Created"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={leadForm.createdAt}
+              onChange={(event) => setLeadForm((prev) => ({ ...prev, createdAt: event.target.value }))}
+            />
+            <TextField
+              select
+              label="Stage"
+              required
+              value={leadForm.stageId}
+              onChange={(event) => setLeadForm((prev) => ({ ...prev, stageId: event.target.value }))}
+            >
+              {stages.map((stage) => (
+                <MenuItem key={stage.id} value={stage.id}>
+                  {stage.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Notes"
+              placeholder="Take a note for this lead"
+              multiline
+              minRows={3}
+              value={leadForm.notes}
+              onChange={(event) => setLeadForm((prev) => ({ ...prev, notes: event.target.value }))}
+            />
+            {addLeadError ? (
+              <Typography variant="body2" color="error">
+                {addLeadError}
+              </Typography>
+            ) : null}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button onClick={handleCloseAddLead} disabled={isSubmittingLead}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={isSubmittingLead}>
+              {isSubmittingLead ? "Adding..." : "Add Lead"}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
