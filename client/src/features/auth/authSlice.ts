@@ -10,6 +10,7 @@ const initialState: AuthState = {
   accessToken: storage.getAccessToken(),
   user: null,
   tenantId: null,
+  role: null,
   error: null,
 };
 
@@ -29,6 +30,7 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.user = null;
       state.tenantId = null;
+      state.role = null;
       state.error = null;
     },
     setTenantId(state, action: PayloadAction<string | null>) {
@@ -49,6 +51,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user ?? null;
         state.tenantId = action.payload.tenantId ?? null;
+        state.role = action.payload.role ?? null;
 
         storage.setAccessToken(action.payload.accessToken);
         if (action.payload.refreshToken) storage.setRefreshToken(action.payload.refreshToken);

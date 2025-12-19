@@ -59,7 +59,7 @@ router.post("/login", async (req, res) => {
             role: "SUPERADMIN",
             activeTenant: null,
             tenants: [],
-            redirectTo: "/superadmin/dashboard"
+            redirectTo: "/superamanpanel"
         });
     }  
 

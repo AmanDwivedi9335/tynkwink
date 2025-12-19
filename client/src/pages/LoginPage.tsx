@@ -36,6 +36,7 @@ export default function LoginPage() {
   const status = useAppSelector(selectAuthStatus);
   const error = useAppSelector(selectAuthError);
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const role = useAppSelector((state) => state.auth.role);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(LoginSchema),
@@ -43,8 +44,13 @@ export default function LoginPage() {
   });
 
   React.useEffect(() => {
-    if (isAuthenticated) navigate("/app", { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (!isAuthenticated) return;
+    if (role === "SUPERADMIN") {
+      navigate("/superamanpanel", { replace: true });
+    } else {
+      navigate("/app", { replace: true });
+    }
+  }, [isAuthenticated, navigate, role]);
 
   const onSubmit = async (values: LoginForm) => {
     const payload = {
@@ -55,7 +61,8 @@ export default function LoginPage() {
 
     const res = await dispatch(loginThunk(payload));
     if (loginThunk.fulfilled.match(res)) {
-      navigate("/app", { replace: true });
+      const redirectTo = res.payload.redirectTo ?? (res.payload.role === "SUPERADMIN" ? "/superamanpanel" : "/app");
+      navigate(redirectTo, { replace: true });
     }
   };
 

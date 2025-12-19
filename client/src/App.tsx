@@ -1,5 +1,9 @@
 import { Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
+import TenantDashboard from "./pages/TenantDashboard";
+import SuperAdminLayout from "./layouts/SuperAdminLayout";
+import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard";
+import TenantsPage from "./pages/superadmin/TenantsPage";
 
 // Temporary home/dashboard page
 function HomePage() {
@@ -18,6 +22,12 @@ function App() {
 
       {/* Login route */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/app" element={<TenantDashboard />} />
+
+      <Route path="/superamanpanel" element={<SuperAdminLayout />}>
+        <Route index element={<SuperAdminDashboard />} />
+        <Route path="tenants" element={<TenantsPage />} />
+      </Route>
 
       {/* Fallback for unknown routes */}
       <Route
