@@ -4,6 +4,15 @@ import TenantDashboard from "./pages/TenantDashboard";
 import SuperAdminLayout from "./layouts/SuperAdminLayout";
 import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard";
 import TenantsPage from "./pages/superadmin/TenantsPage";
+import TenantLayout from "./layouts/TenantLayout";
+import CrmPage from "./pages/tenant/CrmPage";
+import AutoFollowupsPage from "./pages/tenant/AutoFollowupsPage";
+import KnowledgeBasePage from "./pages/tenant/KnowledgeBasePage";
+import SmartTriggersPage from "./pages/tenant/SmartTriggersPage";
+import AnalyticsPage from "./pages/tenant/AnalyticsPage";
+import WhatsAppPage from "./pages/tenant/WhatsAppPage";
+import IntegrationsPage from "./pages/tenant/IntegrationsPage";
+import TenantAccessGuidePage from "./pages/tenant/TenantAccessGuidePage";
 
 // Temporary home/dashboard page
 function HomePage() {
@@ -22,7 +31,19 @@ function App() {
 
       {/* Login route */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/app" element={<TenantDashboard />} />
+
+      {/* Tenant app routes */}
+      <Route path="/app" element={<TenantLayout />}>
+        <Route index element={<TenantDashboard />} />
+        <Route path="crm" element={<CrmPage />} />
+        <Route path="auto-followups" element={<AutoFollowupsPage />} />
+        <Route path="knowledge-base" element={<KnowledgeBasePage />} />
+        <Route path="smart-triggers" element={<SmartTriggersPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="whatsapp" element={<WhatsAppPage />} />
+        <Route path="integrations" element={<IntegrationsPage />} />
+        <Route path="access-guide" element={<TenantAccessGuidePage />} />
+      </Route>
 
       <Route path="/superamanpanel" element={<SuperAdminLayout />}>
         <Route index element={<SuperAdminDashboard />} />
