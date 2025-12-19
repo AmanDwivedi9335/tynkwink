@@ -354,7 +354,12 @@ export default function CrmPage() {
 
   return (
     <Box sx={{ display: "grid", gap: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", md: "center" }}
+        spacing={2}
+      >
         <Box>
           <Typography variant="h4" fontWeight={800}>
             CRM
@@ -366,11 +371,17 @@ export default function CrmPage() {
         <Button
           variant="outlined"
           startIcon={<PlayCircleOutlineIcon />}
-          sx={{ borderRadius: 999, textTransform: "none", fontWeight: 600 }}
+          sx={{
+            borderRadius: 999,
+            textTransform: "none",
+            fontWeight: 600,
+            alignSelf: { xs: "stretch", sm: "flex-start" },
+            whiteSpace: "nowrap",
+          }}
         >
           Watch Tutorial
         </Button>
-      </Box>
+      </Stack>
 
       <Paper
         elevation={0}
@@ -383,7 +394,11 @@ export default function CrmPage() {
           gap: 2.5,
         }}
       >
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="center">
+        <Stack
+          direction={{ xs: "column", lg: "row" }}
+          spacing={2}
+          alignItems={{ xs: "stretch", lg: "center" }}
+        >
           <TextField
             fullWidth
             placeholder="Search leads"
@@ -396,23 +411,53 @@ export default function CrmPage() {
                 </InputAdornment>
               ),
             }}
-            sx={{ backgroundColor: "background.paper", borderRadius: 999 }}
+            sx={{
+              backgroundColor: "background.paper",
+              borderRadius: 999,
+              flex: 1,
+              minWidth: { xs: "100%", md: 320 },
+            }}
           />
           <Button
             variant="outlined"
             startIcon={<FilterAltOutlinedIcon />}
-            sx={{ borderRadius: 2, textTransform: "none" }}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              width: { xs: "100%", sm: "auto" },
+              whiteSpace: "nowrap",
+            }}
           >
             Filters
           </Button>
-          <Stack direction="row" spacing={1.5}>
-            <Button variant="outlined" sx={{ borderRadius: 2, textTransform: "none" }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            flexWrap="wrap"
+            justifyContent={{ xs: "stretch", sm: "flex-end" }}
+            sx={{ width: { xs: "100%", lg: "auto" } }}
+          >
+            <Button
+              variant="outlined"
+              sx={{ borderRadius: 2, textTransform: "none", width: { xs: "100%", sm: "auto" } }}
+            >
               Call Reminders
             </Button>
-            <Button variant="outlined" sx={{ borderRadius: 2, textTransform: "none" }}>
+            <Button
+              variant="outlined"
+              sx={{ borderRadius: 2, textTransform: "none", width: { xs: "100%", sm: "auto" } }}
+            >
               Import Leads
             </Button>
-            <Button variant="contained" sx={{ borderRadius: 2, fontWeight: 700, textTransform: "none" }}>
+            <Button
+              variant="contained"
+              sx={{
+                borderRadius: 2,
+                fontWeight: 700,
+                textTransform: "none",
+                width: { xs: "100%", sm: "auto" },
+              }}
+            >
               + Add New Lead
             </Button>
           </Stack>
