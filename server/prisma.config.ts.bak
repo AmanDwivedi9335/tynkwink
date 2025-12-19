@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -13,12 +12,5 @@ export default defineConfig({
   // optional but fine to keep explicit
   migrations: {
     path: "prisma/migrations",
-  },
-
-  // ✅ for PrismaClient direct DB connection (no Accelerate)
-  client: {
-    adapter: new PrismaMariaDb({
-      url: env("DATABASE_URL"),
-    }),
   },
 });

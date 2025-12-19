@@ -1,27 +1,21 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-
-
-
+// Prisma schema
 
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
+  engineType = "binary"
 }
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
   SUPERADMIN
   TENANT_ADMIN
   SALES_ADMIN
-  SALES_EXEC
+  SALES_EXECUTIVE
 }
 
 enum InboundSource {
@@ -38,22 +32,32 @@ enum InboundStatus {
   JUNK
 }
 
-model Tenant{
-  id String @id @default(cuid())
-  name String
+// Important: Decision action should not reuse InboundStatus
+enum InboundDecisionAction {
+  IMPORTED
+  JUNK
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
-  leadStages LeadStage[]
-  leads Lead[]
-  inbound InboundItem[]
-  settings TenantSetting?
+  users     TenantUser[]
+  settings  TenantSetting?
+  stages    LeadStage[]
+  leads     Lead[]
+  inbound   InboundItem[]
+
+  @@index([isActive])
 }
 
 model TenantSetting {
-  tenantId String @id
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenantId      String  @id
+  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Used to validate inbound confirm links
   inboundSecret String
@@ -63,71 +67,110 @@ model TenantSetting {
 }
 
 model User {
-  id String @id @default(cuid())
-  tenantId String
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  id           String   @id @default(cuid())
   name         String
-  email        String
+  email        String   @unique
   passwordHash String
-  role         UserRole @default(SALES_EXEC)
   isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  memberships   TenantUser[]
+  refreshTokens RefreshToken[]
+
+  // Leads assigned to this user (across tenants)
+  assignedLeads Lead[] @relation("LeadAssignee")
+
+  inboundDecisions InboundDecision[] @relation("InboundDecider")
+
+  @@index([isActive])
+}
+
+model TenantUser {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  role      UserRole
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  @@unique([tenantId, email])
-  @@index([tenantId]) 
-  leads Lead[]
-  inboundDecisions InboundDecision[]
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, role])
+  @@index([userId, role])
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String
+  revokedAt  DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model LeadStage {
   id        String   @id @default(cuid())
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   name      String
   position  Int
   isDeleted Boolean  @default(false)
 
-  leads Lead[]
+  leads     Lead[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Prevent duplicate stage names per tenant
   @@unique([tenantId, name])
-  @@index([tenantId, position])
+
+  // Prevent duplicate positions per tenant (important for ordered pipelines)
+  @@unique([tenantId, position])
+
+  @@index([tenantId, isDeleted])
 }
 
 model Lead {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  stageId     String
-  stage       LeadStage @relation(fields: [stageId], references: [id])
+  stageId   String
+  stage     LeadStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
 
-  name        String?
-  phone       String?
-  email       String?
-  company     String?
-  notes       String?
+  name      String?
+  phone     String?
+  email     String?
+  company   String?
+  notes     String?
 
-  source      InboundSource
-  assignedTo  String?
-  assignedUser User? @relation(fields: [assignedTo], references: [id])
+  source    InboundSource
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  assignedTo   String?
+  assignedUser User? @relation("LeadAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId, stageId])
   @@index([tenantId, phone])
   @@index([tenantId, email])
+  @@index([tenantId, assignedTo])
 }
 
 model InboundItem {
   id        String        @id @default(cuid())
   tenantId  String
-  tenant    Tenant        @relation(fields: [tenantId], references: [id])
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   source    InboundSource
   status    InboundStatus @default(PENDING_CONFIRMATION)
@@ -141,27 +184,32 @@ model InboundItem {
   email     String?
   company   String?
 
-  // Token used for email confirmation action
+  // Token used for confirmation action (global uniqueness is ok)
   confirmToken String @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  decision InboundDecision?
+  decision  InboundDecision?
 
   @@index([tenantId, status])
   @@index([tenantId, source])
+  @@index([createdAt])
 }
 
 model InboundDecision {
-  id          String   @id @default(cuid())
-  inboundId   String   @unique
-  inbound     InboundItem @relation(fields: [inboundId], references: [id])
+  id        String   @id @default(cuid())
+  inboundId String   @unique
+  inbound   InboundItem @relation(fields: [inboundId], references: [id], onDelete: Cascade)
 
-  action      InboundStatus // IMPORTED or JUNK
+  action    InboundDecisionAction // IMPORTED or JUNK only
+
   decidedBy   String?
-  decidedUser User? @relation(fields: [decidedBy], references: [id])
+  decidedUser User? @relation("InboundDecider", fields: [decidedBy], references: [id], onDelete: SetNull)
 
-  decidedAt   DateTime @default(now())
-  note        String?
+  decidedAt DateTime @default(now())
+  note      String?
+
+  @@index([decidedBy])
+  @@index([decidedAt])
 }

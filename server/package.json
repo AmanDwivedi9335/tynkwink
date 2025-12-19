@@ -1,21 +1,21 @@
 {
   "devDependencies": {
-    "@prisma/client": "^7.1.0",
+    "@prisma/client": "^6.19.1",
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.0.3",
-    "prisma": "^7.1.0",
+    "prisma": "^6.19.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "name": "server",
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "@prisma/adapter-mariadb": "^7.1.0",
     "aws-ssl-profiles": "^1.1.2",
     "bcrypt": "^6.0.0",
     "c12": "^3.1.0",
@@ -24,6 +24,7 @@
     "citty": "^0.1.6",
     "confbox": "^0.2.2",
     "consola": "^3.4.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "cross-spawn": "^7.0.6",
     "csstype": "^3.2.3",
@@ -93,12 +94,11 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/server.ts"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "license": "ISC"
 }
