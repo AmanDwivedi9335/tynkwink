@@ -13,6 +13,7 @@ import AnalyticsPage from "./pages/tenant/AnalyticsPage";
 import WhatsAppPage from "./pages/tenant/WhatsAppPage";
 import IntegrationsPage from "./pages/tenant/IntegrationsPage";
 import TenantAccessGuidePage from "./pages/tenant/TenantAccessGuidePage";
+import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 
 // Temporary home/dashboard page
 function HomePage() {
@@ -43,11 +44,13 @@ function App() {
         <Route path="whatsapp" element={<WhatsAppPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="access-guide" element={<TenantAccessGuidePage />} />
+        <Route path="profile" element={<ProfileSettingsPage />} />
       </Route>
 
       <Route path="/superamanpanel" element={<SuperAdminLayout />}>
         <Route index element={<SuperAdminDashboard />} />
         <Route path="tenants" element={<TenantsPage />} />
+        <Route path="profile" element={<ProfileSettingsPage />} />
       </Route>
 
       {/* Fallback for unknown routes */}
