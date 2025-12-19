@@ -1,232 +1,196 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
+import { prisma } from "../prisma";
+import { InboundSource } from "../../generated/prisma";
 
 const router = Router();
 
-const pipelineData = {
-  stages: [
-    { id: "stage-new", name: "New Lead", color: "#f59e0b" },
-    { id: "stage-qualified", name: "Qualified", color: "#3b82f6" },
-    { id: "stage-conversation", name: "In Conversation", color: "#a855f7" },
-    { id: "stage-good", name: "Good Lead", color: "#22c55e" },
-    { id: "stage-won", name: "Lead Won", color: "#ef4444" },
-    { id: "stage-no-response", name: "No Response", color: "#6366f1" },
-    { id: "stage-deleted", name: "Deleted", color: "#06b6d4" },
-  ],
-  leads: [
-    {
-      id: "LD-1024",
-      stageId: "stage-new",
-      personal: {
-        name: "Simran Kaur",
-        phone: "+91 99112 77890",
-        email: "simran.kaur@example.com",
-      },
-      company: {
-        name: "Kaur Wellness",
-        size: "11-50",
-        location: "Chandigarh",
-      },
-      notes: "Requested a product walkthrough for their sales team.",
-      autoFollowUp: {
-        sequence: "Warm Leads - Week 1",
-        nextStep: "Send WhatsApp follow-up",
-      },
-      callTracker: {
-        lastCall: "2 days ago",
-        outcome: "Callback requested",
-        attempts: 2,
-      },
-      nextReminder: "Today, 3:30 PM",
-      daysInStage: 2,
-    },
-    {
-      id: "LD-1028",
-      stageId: "stage-new",
-      personal: {
-        name: "Manish Tiwari",
-        phone: "+91 98340 11209",
-        email: "manish.tiwari@example.com",
-      },
-      company: {
-        name: "Tiwari Textiles",
-        size: "51-200",
-        location: "Jaipur",
-      },
-      notes: "Needs pricing sheet and ROI case study.",
-      autoFollowUp: {
-        sequence: "Pricing Interest",
-        nextStep: "Email pricing brochure",
-      },
-      callTracker: {
-        lastCall: "Yesterday",
-        outcome: "Discussed pricing",
-        attempts: 1,
-      },
-      nextReminder: "Tomorrow, 10:00 AM",
-      daysInStage: 1,
-    },
-    {
-      id: "LD-1031",
-      stageId: "stage-qualified",
-      personal: {
-        name: "Karan Sethi",
-        phone: "+91 98765 44120",
-        email: "karan.sethi@example.com",
-      },
-      company: {
-        name: "Sethi Logistics",
-        size: "201-500",
-        location: "Delhi",
-      },
-      notes: "Operations team shortlisted top vendors.",
-      autoFollowUp: {
-        sequence: "Qualified - Ops",
-        nextStep: "Share implementation timeline",
-      },
-      callTracker: {
-        lastCall: "3 days ago",
-        outcome: "Awaiting team feedback",
-        attempts: 3,
-      },
-      nextReminder: "Friday, 11:00 AM",
-      daysInStage: 4,
-    },
-    {
-      id: "LD-1033",
-      stageId: "stage-conversation",
-      personal: {
-        name: "Aisha Sharma",
-        phone: "+91 99988 33441",
-        email: "aisha.sharma@example.com",
-      },
-      company: {
-        name: "Sharma Studios",
-        size: "1-10",
-        location: "Mumbai",
-      },
-      notes: "Interested in WhatsApp automation for campaigns.",
-      autoFollowUp: {
-        sequence: "Discovery",
-        nextStep: "Schedule demo recap",
-      },
-      callTracker: {
-        lastCall: "5 days ago",
-        outcome: "Demo completed",
-        attempts: 2,
-      },
-      nextReminder: "Monday, 9:00 AM",
-      daysInStage: 6,
-    },
-    {
-      id: "LD-1040",
-      stageId: "stage-good",
-      personal: {
-        name: "Nitin Verma",
-        phone: "+91 98220 55110",
-        email: "nitin.verma@example.com",
-      },
-      company: {
-        name: "Verma Automotives",
-        size: "501-1000",
-        location: "Pune",
-      },
-      notes: "Ready for pilot proposal; needs security checklist.",
-      autoFollowUp: {
-        sequence: "Proposal",
-        nextStep: "Send pilot proposal",
-      },
-      callTracker: {
-        lastCall: "Today",
-        outcome: "Proposal requested",
-        attempts: 4,
-      },
-      nextReminder: "Today, 6:00 PM",
-      daysInStage: 8,
-    },
-    {
-      id: "LD-1044",
-      stageId: "stage-won",
-      personal: {
-        name: "Priya Nair",
-        phone: "+91 99001 22011",
-        email: "priya.nair@example.com",
-      },
-      company: {
-        name: "Nair Hospitality",
-        size: "51-200",
-        location: "Kochi",
-      },
-      notes: "Contract signed; onboarding kickoff scheduled.",
-      autoFollowUp: {
-        sequence: "Onboarding",
-        nextStep: "Share onboarding checklist",
-      },
-      callTracker: {
-        lastCall: "1 week ago",
-        outcome: "Contract signed",
-        attempts: 5,
-      },
-      nextReminder: "Next Wednesday, 2:00 PM",
-      daysInStage: 12,
-    },
-    {
-      id: "LD-1048",
-      stageId: "stage-no-response",
-      personal: {
-        name: "Rohan Das",
-        phone: "+91 98110 45567",
-        email: "rohan.das@example.com",
-      },
-      company: {
-        name: "Das Retail",
-        size: "11-50",
-        location: "Kolkata",
-      },
-      notes: "No response to last 2 follow-ups.",
-      autoFollowUp: {
-        sequence: "Re-engagement",
-        nextStep: "Send last touch email",
-      },
-      callTracker: {
-        lastCall: "10 days ago",
-        outcome: "No answer",
-        attempts: 4,
-      },
-      nextReminder: "Friday, 4:00 PM",
-      daysInStage: 10,
-    },
-    {
-      id: "LD-1052",
-      stageId: "stage-deleted",
-      personal: {
-        name: "Meera Kapoor",
-        phone: "+91 98088 66770",
-        email: "meera.kapoor@example.com",
-      },
-      company: {
-        name: "Kapoor Interiors",
-        size: "1-10",
-        location: "Delhi",
-      },
-      notes: "Out of scope for current offering.",
-      autoFollowUp: {
-        sequence: "Closed",
-        nextStep: "Archive record",
-      },
-      callTracker: {
-        lastCall: "2 weeks ago",
-        outcome: "Not a fit",
-        attempts: 2,
-      },
-      nextReminder: "N/A",
-      daysInStage: 14,
-    },
-  ],
-};
+const defaultStages = [
+  { name: "New Lead", color: "#f59e0b" },
+  { name: "Qualified", color: "#3b82f6" },
+  { name: "In Conversation", color: "#a855f7" },
+  { name: "Good Lead", color: "#22c55e" },
+  { name: "Lead Won", color: "#ef4444" },
+  { name: "No Response", color: "#6366f1" },
+  { name: "Deleted", color: "#06b6d4" },
+];
 
-router.get("/crm/pipeline", requireAuth, (_req, res) => {
-  res.json(pipelineData);
+const stageColorMap = defaultStages.reduce<Record<string, string>>((acc, stage) => {
+  acc[stage.name] = stage.color;
+  return acc;
+}, {});
+
+const leadSchema = z.object({
+  name: z.string().trim().min(1, "Lead name is required"),
+  phone: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().optional()
+  ),
+  email: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().email("Invalid email address").optional()
+  ),
+  company: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().optional()
+  ),
+  notes: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().optional()
+  ),
+  stageId: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().optional()
+  ),
+  createdAt: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().optional()
+  ),
+});
+
+async function ensureStages(tenantId: string) {
+  let stages = await prisma.leadStage.findMany({
+    where: { tenantId, isDeleted: false },
+    orderBy: { position: "asc" },
+  });
+
+  if (stages.length === 0) {
+    await prisma.leadStage.createMany({
+      data: defaultStages.map((stage, index) => ({
+        tenantId,
+        name: stage.name,
+        position: index + 1,
+      })),
+    });
+
+    stages = await prisma.leadStage.findMany({
+      where: { tenantId, isDeleted: false },
+      orderBy: { position: "asc" },
+    });
+  }
+
+  return stages;
+}
+
+function formatLead(lead: {
+  id: string;
+  stageId: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  company: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  const daysInStage = Math.max(
+    0,
+    Math.floor((Date.now() - lead.updatedAt.getTime()) / (1000 * 60 * 60 * 24))
+  );
+
+  return {
+    id: lead.id,
+    stageId: lead.stageId,
+    personal: {
+      name: lead.name ?? "",
+      phone: lead.phone ?? "",
+      email: lead.email ?? "",
+    },
+    company: {
+      name: lead.company ?? "",
+      size: "",
+      location: "",
+    },
+    notes: lead.notes ?? "",
+    autoFollowUp: {
+      sequence: "Manual",
+      nextStep: "Set follow-up",
+    },
+    callTracker: {
+      lastCall: "Not called",
+      outcome: "Not contacted",
+      attempts: 0,
+    },
+    nextReminder: "Not scheduled",
+    daysInStage,
+  };
+}
+
+router.get("/crm/pipeline", requireAuth, async (req, res) => {
+  const tenantId = req.auth?.tenantId;
+  if (!tenantId) {
+    return res.status(403).json({ message: "Tenant context required" });
+  }
+
+  const stages = await ensureStages(tenantId);
+  const leads = await prisma.lead.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return res.json({
+    stages: stages.map((stage) => ({
+      id: stage.id,
+      name: stage.name,
+      color: stageColorMap[stage.name] ?? "#64748b",
+    })),
+    leads: leads.map((lead) => formatLead(lead)),
+  });
+});
+
+router.post("/crm/leads", requireAuth, async (req, res) => {
+  const tenantId = req.auth?.tenantId;
+  if (!tenantId) {
+    return res.status(403).json({ message: "Tenant context required" });
+  }
+
+  const parsed = leadSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
+  }
+
+  const { name, phone, email, company, notes, stageId, createdAt } = parsed.data;
+
+  const stages = await ensureStages(tenantId);
+  const resolvedStageId = stageId ?? stages[0]?.id;
+
+  if (!resolvedStageId) {
+    return res.status(400).json({ message: "No stages available for tenant" });
+  }
+
+  const stage = await prisma.leadStage.findFirst({
+    where: { id: resolvedStageId, tenantId, isDeleted: false },
+  });
+
+  if (!stage) {
+    return res.status(400).json({ message: "Invalid stage selected" });
+  }
+
+  let createdAtDate: Date | undefined;
+  if (createdAt) {
+    const parsedDate = new Date(createdAt);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ message: "Invalid created date" });
+    }
+    createdAtDate = parsedDate;
+  }
+
+  const lead = await prisma.lead.create({
+    data: {
+      tenantId,
+      stageId: stage.id,
+      name,
+      phone,
+      email,
+      company,
+      notes,
+      source: InboundSource.MANUAL,
+      createdAt: createdAtDate,
+    },
+  });
+
+  return res.status(201).json({ lead: formatLead(lead) });
 });
 
 export default router;
