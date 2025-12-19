@@ -9,6 +9,8 @@ export type LoginResponse = {
     refreshToken: string;
     user?: any;
     tenantId?: string;
+    role?: string;
+    redirectTo?: string;
 };
 
 export type AuthState = {
@@ -17,5 +19,6 @@ export type AuthState = {
     accessToken: string | null;
     user: any | null;
     tenantId: string | null;
+    role: string | null;
     error: string | null;
 };
