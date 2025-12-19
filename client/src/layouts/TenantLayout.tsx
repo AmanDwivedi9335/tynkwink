@@ -93,10 +93,10 @@ export default function TenantLayout() {
           </Box>
           <Box>
             <Typography variant="h6" fontWeight={800} lineHeight={1}>
-              Kraya
+              TynkWink
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Never Lose a Lead Again
+              Flow with the Lead!
             </Typography>
           </Box>
         </Stack>
@@ -136,7 +136,7 @@ export default function TenantLayout() {
         >
           <Typography fontWeight={700}>Next Step</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Install the Kraya Extension
+            Install the TynkWink Extension
           </Typography>
           <Button
             fullWidth

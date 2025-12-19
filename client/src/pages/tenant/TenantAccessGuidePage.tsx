@@ -31,7 +31,7 @@ export default function TenantAccessGuidePage() {
           Steps to log in
         </Typography>
         <Box component="ol" sx={{ pl: 3, m: 0, color: "text.secondary" }}>
-          <li>Open the Kraya login page and enter the tenant admin email address.</li>
+          <li>Open the TynkWink login page and enter the tenant admin email address.</li>
           <li>Use the temporary password provided during tenant creation.</li>
           <li>Enter the Tenant ID (slug) if the admin belongs to multiple workspaces.</li>
           <li>After signing in, reset the password from Settings → Security.</li>

@@ -38,7 +38,7 @@ const quickActions = [
   },
   {
     title: "Train Your AI",
-    description: "Set up your company info to fine-tune Kraya's AI.",
+    description: "Set up your company info to fine-tune TynkWink's AI.",
     action: "Setup Now",
     icon: <SchoolOutlinedIcon fontSize="small" />,
     color: "#e0f2f1",
@@ -53,7 +53,7 @@ const quickActions = [
 ];
 
 const setupSteps = [
-  "Install the Kraya Extension",
+  "Install the TynkWink Extension",
   "Connect your WhatsApp",
   "Import your first leads",
   "Create an automation sequence",
@@ -114,7 +114,7 @@ export default function TenantDashboard() {
             <Stack direction="row" spacing={1.5} alignItems="center">
               <ExtensionOutlinedIcon />
               <Typography fontWeight={600}>
-                Install the Kraya Chrome Extension to enable WhatsApp sync and automations.
+                Install the TynkWink Chrome Extension to enable WhatsApp sync and automations.
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1} alignItems="center">
