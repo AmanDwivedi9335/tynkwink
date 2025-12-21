@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.routes";
 import meRoutes from "./routes/me.routes";
 import superAdminRoutes from "./routes/superadmin.routes";
 import crmRoutes from "./routes/crm.routes";
+import integrationRoutes from "./routes/integrations.routes";
 
 export const app = express();
 
@@ -23,3 +24,4 @@ app.use("/api/auth", authRoutes);
 app.use("/api", meRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api", crmRoutes);
+app.use("/api/integrations", integrationRoutes);
