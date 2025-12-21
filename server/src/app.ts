@@ -7,6 +7,7 @@ import superAdminRoutes from "./routes/superadmin.routes";
 import crmRoutes from "./routes/crm.routes";
 import integrationRoutes from "./routes/integrations.routes";
 import smartTriggerRoutes from "./routes/smart-triggers.routes";
+import staffRoutes from "./routes/staff.routes";
 
 export const app = express();
 
@@ -27,3 +28,4 @@ app.use("/api/superadmin", superAdminRoutes);
 app.use("/api", crmRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/api", smartTriggerRoutes);
+app.use("/api", staffRoutes);
