@@ -13,6 +13,7 @@ import AnalyticsPage from "./pages/tenant/AnalyticsPage";
 import WhatsAppPage from "./pages/tenant/WhatsAppPage";
 import IntegrationsPage from "./pages/tenant/IntegrationsPage";
 import TenantAccessGuidePage from "./pages/tenant/TenantAccessGuidePage";
+import StaffPage from "./pages/tenant/StaffPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 
 // Temporary home/dashboard page
@@ -43,6 +44,7 @@ function App() {
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="whatsapp" element={<WhatsAppPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />
+        <Route path="staff" element={<StaffPage />} />
         <Route path="access-guide" element={<TenantAccessGuidePage />} />
         <Route path="profile" element={<ProfileSettingsPage />} />
       </Route>
