@@ -38,6 +38,12 @@ enum InboundDecisionAction {
   JUNK
 }
 
+enum SmartTriggerStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -212,4 +218,19 @@ model InboundDecision {
 
   @@index([decidedBy])
   @@index([decidedAt])
+}
+
+model SmartTriggerFlow {
+  id          String             @id @default(cuid())
+  tenantId    String
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  status      SmartTriggerStatus @default(DRAFT)
+  steps       Json
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, updatedAt])
 }
