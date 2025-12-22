@@ -57,6 +57,7 @@ model Tenant {
   stages    LeadStage[]
   leads     Lead[]
   inbound   InboundItem[]
+  smartTriggerFlows SmartTriggerFlow[]
 
   @@index([isActive])
 }
