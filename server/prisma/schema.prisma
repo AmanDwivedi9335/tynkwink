@@ -57,6 +57,7 @@ model Tenant {
   stages    LeadStage[]
   leads     Lead[]
   inbound   InboundItem[]
+  smartTriggerFlows SmartTriggerFlow[]
 
   @@index([isActive])
 }
@@ -157,7 +158,7 @@ model Lead {
   phone     String?
   email     String?
   company   String?
-  notes     String?
+  notes     String?  @db.Text
 
   source    InboundSource
 
