@@ -157,7 +157,7 @@ model Lead {
   phone     String?
   email     String?
   company   String?
-  notes     String?
+  notes     String?  @db.Text
 
   source    InboundSource
 
