@@ -1,5 +1,5 @@
 import { prisma } from "../prisma";
-import { UserRole } from "../../generated/prisma";
+import { UserRole } from "@prisma/client";
 
 export async function canManageIntegrations(params: {
   tenantId: string;
