@@ -4,6 +4,27 @@ import type { AuthState, LoginResponse } from "./authTypes";
 import { loginThunk } from "./authThunks";
 import { storage } from "../../lib/storage";
 
+type AccessTokenPayload = {
+  sub?: string;
+  tenantId?: string | null;
+  role?: string | null;
+  exp?: number;
+  iat?: number;
+};
+
+function decodeJwtPayload(token: string): AccessTokenPayload | null {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = parts[1]!;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    return JSON.parse(atob(padded)) as AccessTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
 const initialState: AuthState = {
   status: "idle",
   isAuthenticated: !!storage.getAccessToken(),
@@ -22,6 +43,15 @@ const authSlice = createSlice({
       const token = storage.getAccessToken();
       state.accessToken = token;
       state.isAuthenticated = !!token;
+      if (!token) {
+        state.user = null;
+        state.tenantId = null;
+        state.role = null;
+        return;
+      }
+      const payload = decodeJwtPayload(token);
+      state.tenantId = payload?.tenantId ?? null;
+      state.role = payload?.role ?? null;
     },
     logout(state) {
       storage.clearAll();
