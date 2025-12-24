@@ -58,6 +58,32 @@ const ruleSchema = z.object({
   conditions: gmailRuleSchema,
 });
 
+const MAX_REASON_LENGTH = 180;
+
+function sanitizeReason(reason?: string | null) {
+  if (!reason) return undefined;
+  return reason.toString().slice(0, MAX_REASON_LENGTH);
+}
+
+function resolveDefaultRedirect() {
+  const base = process.env.PUBLIC_BASE_URL ?? "http://localhost:5173";
+  try {
+    return new URL("/app/settings/gmail", base).toString();
+  } catch (error) {
+    return "http://localhost:5173/app/settings/gmail";
+  }
+}
+
+function appendParams(url: string, params: Record<string, string | undefined>) {
+  const target = new URL(url);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      target.searchParams.set(key, value);
+    }
+  });
+  return target.toString();
+}
+
 router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireTenantContext, async (req, res) => {
   const tenantId = req.params.tenantId;
   const userId = req.auth?.sub;
@@ -110,75 +136,143 @@ router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireT
 router.get("/integrations/gmail/callback", async (req, res) => {
   const code = req.query.code as string | undefined;
   const state = req.query.state as string | undefined;
-  if (!code || !state) {
-    return res.status(400).json({ message: "Missing OAuth parameters" });
-  }
+  const errorParam = req.query.error as string | undefined;
+  const errorDescription = req.query.error_description as string | undefined;
+  let redirectBase = resolveDefaultRedirect();
 
   let parsedState;
-  try {
-    parsedState = verifyState(state);
-  } catch (error) {
-    return res.status(400).json({ message: "Invalid state" });
+  if (state) {
+    try {
+      parsedState = verifyState(state);
+      redirectBase = parsedState.redirectUri ?? redirectBase;
+    } catch (error) {
+      return res.redirect(
+        appendParams(redirectBase, {
+          gmailConnect: "error",
+          stage: "oauth_state",
+          reason: "Invalid OAuth state",
+        })
+      );
+    }
+  }
+
+  if (errorParam) {
+    return res.redirect(
+      appendParams(redirectBase, {
+        gmailConnect: "error",
+        stage: "oauth_consent",
+        reason: sanitizeReason(errorDescription ?? errorParam),
+      })
+    );
+  }
+
+  if (!code || !state) {
+    return res.redirect(
+      appendParams(redirectBase, {
+        gmailConnect: "error",
+        stage: "oauth_callback",
+        reason: "Missing OAuth parameters",
+      })
+    );
   }
 
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID ?? "";
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI ?? "";
   if (!clientId || !clientSecret || !redirectUri) {
-    return res.status(500).json({ message: "Google OAuth config missing" });
+    return res.redirect(
+      appendParams(redirectBase, {
+        gmailConnect: "error",
+        stage: "oauth_config",
+        reason: "Google OAuth config missing",
+      })
+    );
   }
 
   const google = await loadGoogleApis();
   if (!google) {
-    return res.status(500).json({ message: "Google APIs dependency missing. Run npm install in server." });
+    return res.redirect(
+      appendParams(redirectBase, {
+        gmailConnect: "error",
+        stage: "oauth_setup",
+        reason: "Google APIs dependency missing. Run npm install in server.",
+      })
+    );
   }
 
-  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-  const { tokens } = await oauth2.getToken(code);
-  if (!tokens.refresh_token) {
-    return res.status(400).json({ message: "No refresh token received. Ensure consent prompt is enabled." });
-  }
+  try {
+    const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+    const { tokens } = await oauth2.getToken(code);
+    if (!tokens.refresh_token) {
+      return res.redirect(
+        appendParams(redirectBase, {
+          gmailConnect: "error",
+          stage: "oauth_token",
+          reason: "No refresh token received. Ensure consent prompt is enabled.",
+        })
+      );
+    }
 
-  oauth2.setCredentials(tokens);
-  const oauth2Api = google.oauth2({ auth: oauth2, version: "v2" });
-  const profile = await oauth2Api.userinfo.get();
-  const gmailAddress = profile.data.email ?? "";
-  if (!gmailAddress) {
-    return res.status(400).json({ message: "Unable to determine Gmail address" });
-  }
+    oauth2.setCredentials(tokens);
+    const oauth2Api = google.oauth2({ auth: oauth2, version: "v2" });
+    const profile = await oauth2Api.userinfo.get();
+    const gmailAddress = profile.data.email ?? "";
+    if (!gmailAddress) {
+      return res.redirect(
+        appendParams(redirectBase, {
+          gmailConnect: "error",
+          stage: "oauth_profile",
+          reason: "Unable to determine Gmail address",
+        })
+      );
+    }
 
-  const encryptedRefreshToken = encryptSecret(tokens.refresh_token);
-  const scopes = tokens.scope ?? gmailScopes.join(" ");
+    const encryptedRefreshToken = encryptSecret(tokens.refresh_token);
+    const scopes = tokens.scope ?? gmailScopes.join(" ");
 
-  const integration = await prisma.gmailIntegration.upsert({
-    where: { tenantId_gmailAddress: { tenantId: parsedState.tenantId, gmailAddress } },
-    update: {
-      encryptedRefreshToken,
-      scopes,
-      status: "ACTIVE",
-    },
-    create: {
+    const integration = await prisma.gmailIntegration.upsert({
+      where: { tenantId_gmailAddress: { tenantId: parsedState.tenantId, gmailAddress } },
+      update: {
+        encryptedRefreshToken,
+        scopes,
+        status: "ACTIVE",
+      },
+      create: {
+        tenantId: parsedState.tenantId,
+        createdByUserId: parsedState.userId,
+        gmailAddress,
+        encryptedRefreshToken,
+        scopes,
+        status: "ACTIVE",
+      },
+    });
+
+    await writeAuditLog({
       tenantId: parsedState.tenantId,
-      createdByUserId: parsedState.userId,
-      gmailAddress,
-      encryptedRefreshToken,
-      scopes,
-      status: "ACTIVE",
-    },
-  });
+      actorUserId: parsedState.userId,
+      actionType: "GMAIL_CONNECTED",
+      entityType: "GmailIntegration",
+      entityId: integration.id,
+    });
 
-  await writeAuditLog({
-    tenantId: parsedState.tenantId,
-    actorUserId: parsedState.userId,
-    actionType: "GMAIL_CONNECTED",
-    entityType: "GmailIntegration",
-    entityId: integration.id,
-  });
+    await gmailSyncQueue.add("gmail.sync", { integrationId: integration.id }, { jobId: `gmail.sync.${integration.id}` });
 
-  await gmailSyncQueue.add("gmail.sync", { integrationId: integration.id }, { jobId: `gmail.sync.${integration.id}` });
-
-  const redirectTo = parsedState.redirectUri ?? process.env.PUBLIC_BASE_URL ?? "http://localhost:5173/app/integrations";
-  return res.redirect(redirectTo);
+    const redirectTo = parsedState.redirectUri ?? redirectBase;
+    return res.redirect(
+      appendParams(redirectTo, {
+        gmailConnect: "success",
+        gmail: gmailAddress,
+      })
+    );
+  } catch (error: any) {
+    return res.redirect(
+      appendParams(redirectBase, {
+        gmailConnect: "error",
+        stage: "oauth_finalize",
+        reason: sanitizeReason(error?.message ?? "Unknown error"),
+      })
+    );
+  }
 });
 
 router.post(
