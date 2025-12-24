@@ -39,11 +39,15 @@ const allowedRedirectOrigins = (() => {
   });
 })();
 
-function resolveRedirectUri(candidate?: string | null) {
+function resolveRedirectUri(candidate?: string | null, requestOrigin?: string | null) {
   if (!candidate) return undefined;
   try {
     const url = new URL(candidate);
-    if (allowedRedirectOrigins.includes(url.origin)) {
+    if (allowedRedirectOrigins.length > 0) {
+      if (allowedRedirectOrigins.includes(url.origin)) {
+        return url.toString();
+      }
+    } else if (requestOrigin && url.origin === requestOrigin) {
       return url.toString();
     }
   } catch (error) {
@@ -119,7 +123,7 @@ router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireT
     tenantId,
     userId,
     nonce: crypto.randomUUID(),
-    redirectUri: resolveRedirectUri(parsed.data.redirectUri),
+    redirectUri: resolveRedirectUri(parsed.data.redirectUri, req.get("origin")),
     issuedAt: Date.now(),
   });
 
