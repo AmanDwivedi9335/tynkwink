@@ -7,7 +7,7 @@ export type JwtPayload = {
 }
 
 const accessSecret = process.env.JWT_ACCESS_SECRET!;
-const refreshSecret = process.env.JWT_ACCESS_SECRET!;
+const refreshSecret = process.env.JWT_REFRESH_SECRET ?? accessSecret;
 
 export function signAccessToken(payload: JwtPayload, ttlMinutes: number){
     return jwt.sign(payload, accessSecret, {expiresIn: `${ttlMinutes}m`});
