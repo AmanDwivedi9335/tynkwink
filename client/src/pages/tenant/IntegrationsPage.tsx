@@ -67,10 +67,7 @@ export default function IntegrationsPage() {
           IndiaMART Leads
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Pull your IndiaMART leads into Kraya CRM in a single click.
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Requires server environment variables: INDIAMART_GLUSR_CRM_KEY (optional: INDIAMART_BASE_URL).
+          Pull your IndiaMART leads into TynkWynk CRM in a single click.
         </Typography>
         <Box>
           <Button
