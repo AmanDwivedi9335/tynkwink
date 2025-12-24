@@ -25,6 +25,33 @@ const startSchema = z.object({
   redirectUri: z.string().trim().optional(),
 });
 
+const allowedRedirectOrigins = (() => {
+  const configured = (process.env.PUBLIC_BASE_URL ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return configured.flatMap((value) => {
+    try {
+      return [new URL(value).origin];
+    } catch (error) {
+      return [];
+    }
+  });
+})();
+
+function resolveRedirectUri(candidate?: string | null) {
+  if (!candidate) return undefined;
+  try {
+    const url = new URL(candidate);
+    if (allowedRedirectOrigins.includes(url.origin)) {
+      return url.toString();
+    }
+  } catch (error) {
+    return undefined;
+  }
+  return undefined;
+}
+
 const ruleSchema = z.object({
   name: z.string().trim().min(1),
   isActive: z.boolean().optional(),
@@ -66,7 +93,7 @@ router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireT
     tenantId,
     userId,
     nonce: crypto.randomUUID(),
-    redirectUri: parsed.data.redirectUri,
+    redirectUri: resolveRedirectUri(parsed.data.redirectUri),
     issuedAt: Date.now(),
   });
 

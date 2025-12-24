@@ -74,10 +74,15 @@ export default function GmailSettingsPage() {
     setLoading(true);
     setError(null);
     try {
+      const redirectUri = `${window.location.origin}${window.location.pathname}`;
       const response = await api.post(`/api/tenants/${tenantId}/integrations/gmail/start`, {
-        redirectUri: window.location.href,
+        redirectUri,
       });
-      window.location.href = response.data.url;
+      const connectUrl = response.data?.url;
+      if (!connectUrl) {
+        throw new Error("Missing OAuth URL");
+      }
+      window.location.assign(connectUrl);
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Unable to start Gmail OAuth flow.");
     } finally {
