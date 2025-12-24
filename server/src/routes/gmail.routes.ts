@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { Router } from "express";
-import { google } from "googleapis";
+import type { google as GoogleApis } from "googleapis";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { requireTenantContext } from "../middleware/rbac";
@@ -15,6 +15,11 @@ import { gmailSyncQueue } from "../queues/queues";
 const router = Router();
 
 const gmailScopes = ["https://www.googleapis.com/auth/gmail.readonly"];
+
+const loadGoogleApis = () =>
+  import("googleapis")
+    .then((module) => module.google)
+    .catch(() => null as GoogleApis | null);
 
 const startSchema = z.object({
   redirectUri: z.string().trim().optional(),
@@ -49,6 +54,11 @@ router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireT
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI ?? "";
   if (!clientId || !clientSecret || !redirectUri) {
     return res.status(500).json({ message: "Google OAuth config missing" });
+  }
+
+  const google = await loadGoogleApis();
+  if (!google) {
+    return res.status(500).json({ message: "Google APIs dependency missing. Run npm install in server." });
   }
 
   const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
@@ -89,6 +99,11 @@ router.get("/integrations/gmail/callback", async (req, res) => {
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI ?? "";
   if (!clientId || !clientSecret || !redirectUri) {
     return res.status(500).json({ message: "Google OAuth config missing" });
+  }
+
+  const google = await loadGoogleApis();
+  if (!google) {
+    return res.status(500).json({ message: "Google APIs dependency missing. Run npm install in server." });
   }
 
   const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
