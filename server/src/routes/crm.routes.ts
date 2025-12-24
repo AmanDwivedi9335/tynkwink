@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { prisma } from "../prisma";
-import { InboundSource } from "../../generated/prisma";
+import { InboundSource } from "@prisma/client";
 
 const router = Router();
 
