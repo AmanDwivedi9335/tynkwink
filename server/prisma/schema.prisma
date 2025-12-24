@@ -77,6 +77,11 @@ model Tenant {
   leads     Lead[]
   inbound   InboundItem[]
   smartTriggerFlows SmartTriggerFlow[]
+  gmailIntegrations GmailIntegration[]
+  gmailIntegrationAccesses GmailIntegrationAccess[]
+  gmailRules GmailRule[]
+  leadInboxes LeadInbox[]
+  auditLogs AuditLog[]
 
   @@index([isActive])
 }
@@ -124,6 +129,9 @@ model User {
   assignedLeads Lead[] @relation("LeadAssignee")
 
   inboundDecisions InboundDecision[] @relation("InboundDecider")
+  createdGmailIntegrations GmailIntegration[]
+  gmailIntegrationAccesses GmailIntegrationAccess[]
+  auditLogs AuditLog[]
 
   @@index([isActive])
 }
