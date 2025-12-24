@@ -42,12 +42,56 @@ export default function GmailSettingsPage() {
   const [ruleHasAttachments, setRuleHasAttachments] = useState("any");
   const [ruleUnreadOnly, setRuleUnreadOnly] = useState("any");
   const [error, setError] = useState<string | null>(null);
+  const [connectAlert, setConnectAlert] = useState<{ severity: "success" | "error"; title: string; detail?: string } | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
 
   const selected = useMemo(() => integrations.find((integration) => integration.id === selectedIntegration), [
     integrations,
     selectedIntegration,
   ]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("gmailConnect");
+    if (!status) return;
+    const stage = params.get("stage");
+    const reason = params.get("reason");
+    const gmailAddress = params.get("gmail");
+    if (status === "success") {
+      setConnectAlert({
+        severity: "success",
+        title: `Gmail connected${gmailAddress ? `: ${gmailAddress}` : ""}.`,
+        detail: "We will start syncing your inbox to import leads from emails.",
+      });
+    } else {
+      const stageLabel =
+        stage === "oauth_state"
+          ? "validating the OAuth state"
+          : stage === "oauth_consent"
+          ? "getting your consent"
+          : stage === "oauth_callback"
+          ? "handling the OAuth callback"
+          : stage === "oauth_config"
+          ? "loading OAuth configuration"
+          : stage === "oauth_setup"
+          ? "initializing Google APIs"
+          : stage === "oauth_token"
+          ? "exchanging the authorization code"
+          : stage === "oauth_profile"
+          ? "reading your Gmail profile"
+          : stage === "oauth_finalize"
+          ? "finalizing the connection"
+          : "connecting Gmail";
+      setConnectAlert({
+        severity: "error",
+        title: `Gmail connection failed while ${stageLabel}.`,
+        detail: reason ?? "Please try again.",
+      });
+    }
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }, []);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -130,12 +174,21 @@ export default function GmailSettingsPage() {
           <Typography variant="h4" fontWeight={800}>
             Gmail Lead Sources
           </Typography>
-          <Typography color="text.secondary">Connect Gmail accounts and define lead rules.</Typography>
+          <Typography color="text.secondary">
+            Connect Gmail accounts so we can fetch email leads and apply rules to import them automatically.
+          </Typography>
         </Box>
         <Button variant="contained" onClick={handleConnect} disabled={loading} sx={{ borderRadius: 2 }}>
           Connect Gmail
         </Button>
       </Box>
+
+      {connectAlert ? (
+        <Alert severity={connectAlert.severity}>
+          <Typography fontWeight={600}>{connectAlert.title}</Typography>
+          {connectAlert.detail ? <Typography variant="body2">{connectAlert.detail}</Typography> : null}
+        </Alert>
+      ) : null}
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
@@ -161,6 +214,11 @@ export default function GmailSettingsPage() {
                   <Typography variant="body2" color="text.secondary">
                     Last sync: {integration.syncState?.lastSyncAt ?? "Not yet"}
                   </Typography>
+                  {integration.syncState?.lastError ? (
+                    <Typography variant="body2" color="error.main">
+                      Sync error: {integration.syncState.lastError}
+                    </Typography>
+                  ) : null}
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Chip label={integration.status} color={integration.status === "ACTIVE" ? "success" : "default"} />
