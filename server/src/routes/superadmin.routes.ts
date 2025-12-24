@@ -5,7 +5,7 @@ import { prisma } from "../prisma";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import { hashPassword } from "../utils/crypto";
-import { UserRole } from "../../generated/prisma";
+import { UserRole } from "@prisma/client";
 
 const router = Router();
 

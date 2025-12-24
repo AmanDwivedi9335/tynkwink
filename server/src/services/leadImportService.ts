@@ -4,7 +4,7 @@ import { extractLeadFromEmail } from "../providers/openai";
 import { safeTruncate } from "../security/encryption";
 import { writeAuditLog } from "../security/audit";
 import { buildLeadDedupeFilters } from "./leadDedupe";
-import { InboundSource } from "../../generated/prisma";
+import { InboundSource } from "@prisma/client";
 
 const extractionSchema = z.object({
   leadName: z.string().trim().optional(),
