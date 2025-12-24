@@ -8,11 +8,16 @@ import crmRoutes from "./routes/crm.routes";
 import integrationRoutes from "./routes/integrations.routes";
 import smartTriggerRoutes from "./routes/smart-triggers.routes";
 import staffRoutes from "./routes/staff.routes";
+import gmailRoutes from "./routes/gmail.routes";
+import leadInboxRoutes from "./routes/leadInbox.routes";
+import tenantSettingsRoutes from "./routes/tenantSettings.routes";
+import { attachCorrelationId } from "./middleware/correlation";
 
 export const app = express();
 
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
+app.use(attachCorrelationId);
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -29,3 +34,6 @@ app.use("/api", crmRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/api", smartTriggerRoutes);
 app.use("/api", staffRoutes);
+app.use("/api", gmailRoutes);
+app.use("/api", leadInboxRoutes);
+app.use("/api", tenantSettingsRoutes);

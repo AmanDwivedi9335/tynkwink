@@ -44,6 +44,25 @@ enum SmartTriggerStatus {
   ARCHIVED
 }
 
+enum GmailIntegrationStatus {
+  ACTIVE
+  REVOKED
+  ERROR
+}
+
+enum LeadInboxStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IMPORTED
+  ERROR
+}
+
+enum LeadApprovalAction {
+  APPROVE
+  REJECT
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -54,6 +73,7 @@ model Tenant {
 
   users     TenantUser[]
   settings  TenantSetting?
+  leadSettings TenantSettings?
   stages    LeadStage[]
   leads     Lead[]
   inbound   InboundItem[]
@@ -71,6 +91,22 @@ model TenantSetting {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model TenantSettings {
+  tenantId String @id
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  approvalDigestFrequencyMinutes Int    @default(60)
+  defaultLeadOwnerUserId         String?
+  openaiEncryptedApiKey          String?
+  timezone                       String  @default("UTC")
+  lastApprovalDigestAt           DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([defaultLeadOwnerUserId])
 }
 
 model User {
@@ -172,6 +208,136 @@ model Lead {
   @@index([tenantId, phone])
   @@index([tenantId, email])
   @@index([tenantId, assignedTo])
+}
+
+model GmailIntegration {
+  id                    String                 @id @default(cuid())
+  tenantId              String
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUserId       String
+  createdBy             User                   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  gmailAddress          String
+  encryptedRefreshToken String
+  scopes                String
+  status                GmailIntegrationStatus @default(ACTIVE)
+
+  syncState GmailSyncState?
+  rules     GmailRule[]
+  inbox     LeadInbox[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, gmailAddress])
+  @@index([tenantId, status])
+}
+
+model GmailIntegrationAccess {
+  id       String @id @default(cuid())
+  tenantId String
+  userId   String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, userId])
+}
+
+model GmailSyncState {
+  integrationId String @id
+  integration   GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  lastHistoryId String?
+  lastSyncAt    DateTime?
+  errorCount    Int      @default(0)
+  lastError     String?
+  backoffUntil  DateTime?
+
+  @@index([lastSyncAt])
+}
+
+model GmailRule {
+  id            String  @id @default(cuid())
+  tenantId      String
+  integrationId String
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  integration   GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  name          String
+  isActive      Boolean @default(true)
+  conditionsJson Json
+  createdBy     String
+  version       Int     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, integrationId])
+  @@index([tenantId, isActive])
+}
+
+model LeadInbox {
+  id              String  @id @default(cuid())
+  tenantId        String
+  integrationId   String
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  integration     GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  gmailMessageId  String
+  threadId        String?
+  from            String
+  subject         String?
+  snippet         String?
+  receivedAt      DateTime
+  rawHeadersJson  Json
+  rawBodyText     String? @db.Text
+  status          LeadInboxStatus @default(PENDING)
+  detectedAssigneeHint String?
+  extractedPreviewJson Json?
+  leadId          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  approvalTokens LeadApprovalToken[]
+
+  @@unique([integrationId, gmailMessageId])
+  @@index([tenantId, status])
+  @@index([tenantId, receivedAt])
+}
+
+model LeadApprovalToken {
+  id          String @id @default(cuid())
+  leadInboxId String
+  tenantId    String
+  leadInbox   LeadInbox @relation(fields: [leadInboxId], references: [id], onDelete: Cascade)
+  tokenHash   String
+  action      LeadApprovalAction
+  expiresAt   DateTime
+  usedAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, leadInboxId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  actorUserId String?
+  actionType String
+  entityType String
+  entityId   String?
+  metaJson   Json?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, actionType])
+  @@index([tenantId, createdAt])
 }
 
 model InboundItem {

@@ -17,7 +17,9 @@
   "main": "index.js",
   "dependencies": {
     "aws-ssl-profiles": "^1.1.2",
+    "@sendgrid/mail": "^8.1.6",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.14.1",
     "c12": "^3.1.0",
     "chevrotain": "^10.5.0",
     "chokidar": "^4.0.3",
@@ -52,6 +54,7 @@
     "isexe": "^2.0.0",
     "jiti": "^2.6.1",
     "jsonwebtoken": "^9.0.3",
+    "googleapis": "^156.0.0",
     "lilconfig": "^2.1.0",
     "lodash": "^4.17.21",
     "long": "^5.3.2",
@@ -61,6 +64,7 @@
     "mysql2": "^3.15.3",
     "named-placeholders": "^1.1.6",
     "node-fetch-native": "^1.6.7",
+    "nodemailer": "^7.0.6",
     "nypm": "^0.6.2",
     "ohash": "^2.0.11",
     "path-key": "^3.1.1",
@@ -93,8 +97,9 @@
     "zod": "^4.2.1"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsx --test",
     "dev": "tsx watch src/server.ts",
+    "worker": "tsx src/worker.ts",
     "build": "tsc",
     "start": "node dist/server.ts"
   },
