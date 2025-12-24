@@ -30,6 +30,9 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
+import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
+import MarkEmailUnreadOutlinedIcon from "@mui/icons-material/MarkEmailUnreadOutlined";
+import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import MonetizationOnOutlinedIcon from "@mui/icons-material/MonetizationOnOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
@@ -47,6 +50,9 @@ const navItems = [
   { label: "Analytics", icon: <AnalyticsOutlinedIcon />, to: "/app/analytics" },
   { label: "WhatsApp", icon: <WhatsAppIcon />, to: "/app/whatsapp" },
   { label: "Integrations", icon: <ExtensionOutlinedIcon />, to: "/app/integrations" },
+  { label: "Lead Inbox", icon: <InboxOutlinedIcon />, to: "/app/lead-inbox" },
+  { label: "Gmail Lead Sources", icon: <MarkEmailUnreadOutlinedIcon />, to: "/app/settings/gmail" },
+  { label: "Approval Settings", icon: <TaskAltOutlinedIcon />, to: "/app/settings/approvals" },
   { label: "Staff & Permissions", icon: <ManageAccountsOutlinedIcon />, to: "/app/staff" },
   { label: "Tenant Access Guide", icon: <HelpOutlineOutlinedIcon />, to: "/app/access-guide" },
 ];

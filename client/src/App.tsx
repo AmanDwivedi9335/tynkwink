@@ -12,6 +12,9 @@ import SmartTriggersPage from "./pages/tenant/SmartTriggersPage";
 import AnalyticsPage from "./pages/tenant/AnalyticsPage";
 import WhatsAppPage from "./pages/tenant/WhatsAppPage";
 import IntegrationsPage from "./pages/tenant/IntegrationsPage";
+import GmailSettingsPage from "./pages/tenant/GmailSettingsPage";
+import ApprovalSettingsPage from "./pages/tenant/ApprovalSettingsPage";
+import LeadInboxPage from "./pages/tenant/LeadInboxPage";
 import TenantAccessGuidePage from "./pages/tenant/TenantAccessGuidePage";
 import StaffPage from "./pages/tenant/StaffPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
@@ -44,6 +47,9 @@ function App() {
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="whatsapp" element={<WhatsAppPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />
+        <Route path="lead-inbox" element={<LeadInboxPage />} />
+        <Route path="settings/gmail" element={<GmailSettingsPage />} />
+        <Route path="settings/approvals" element={<ApprovalSettingsPage />} />
         <Route path="staff" element={<StaffPage />} />
         <Route path="access-guide" element={<TenantAccessGuidePage />} />
         <Route path="profile" element={<ProfileSettingsPage />} />
