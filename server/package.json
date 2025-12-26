@@ -98,8 +98,8 @@
   },
   "scripts": {
     "test": "tsx --test",
-    "dev": "tsx watch src/server.ts",
-    "worker": "tsx src/worker.ts",
+    "dev": "prisma generate && tsx watch src/server.ts",
+    "worker": "prisma generate && tsx src/worker.ts",
     "postinstall": "prisma generate",
     "build": "tsc",
     "start": "node dist/server.ts"
