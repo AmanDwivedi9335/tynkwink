@@ -114,7 +114,10 @@ export default function GmailSettingsPage() {
   }, [tenantId, selectedIntegration]);
 
   const handleConnect = async () => {
-    if (!tenantId) return;
+    if (!tenantId) {
+      setError("Missing tenant context. Please refresh and select a tenant before connecting Gmail.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -135,7 +138,11 @@ export default function GmailSettingsPage() {
   };
 
   const handleRuleSubmit = async () => {
-    if (!tenantId || !selectedIntegration) return;
+    if (!tenantId) {
+      setError("Missing tenant context. Please refresh and select a tenant before saving a rule.");
+      return;
+    }
+    if (!selectedIntegration) return;
     setLoading(true);
     setError(null);
     try {
@@ -178,7 +185,7 @@ export default function GmailSettingsPage() {
             Connect Gmail accounts so we can fetch email leads and apply rules to import them automatically.
           </Typography>
         </Box>
-        <Button variant="contained" onClick={handleConnect} disabled={loading} sx={{ borderRadius: 2 }}>
+        <Button variant="contained" onClick={handleConnect} disabled={loading || !tenantId} sx={{ borderRadius: 2 }}>
           Connect Gmail
         </Button>
       </Box>
