@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import { Router } from "express";
 import type { Response } from "express";
 import type { google as GoogleApis } from "googleapis";
@@ -72,8 +73,8 @@ function sanitizeReason(reason?: string | null) {
 }
 
 type GmailModels = {
-  gmailIntegration: Prisma.GmailIntegrationDelegate;
-  gmailRule: Prisma.GmailRuleDelegate;
+  gmailIntegration: PrismaClient extends { gmailIntegration: infer Delegate } ? Delegate : never;
+  gmailRule: PrismaClient extends { gmailRule: infer Delegate } ? Delegate : never;
 };
 
 function resolveGmailModels(res: Response): GmailModels | null {
