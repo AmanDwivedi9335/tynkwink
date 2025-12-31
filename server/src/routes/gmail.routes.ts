@@ -90,15 +90,20 @@ type GmailModels = {
   gmailRule: PrismaClient["gmailRule"];
 };
 
-function resolveGmailModels(res: Response): GmailModels | null {
+function resolveGmailModels(
+  res: Response,
+  options?: { allowMissing?: boolean; missingMessage?: string }
+): GmailModels | null {
   const client = getPrismaClient() as typeof prisma & Partial<GmailModels>;
   if (!client.gmailIntegration || !client.gmailRule) {
-    res
-      .status(500)
-      .json({
-        message:
-          "Prisma client missing Gmail models. Run `prisma generate` in server and restart the API.",
-      });
+    const message =
+      options?.missingMessage ??
+      "Prisma client missing Gmail models. Run `prisma generate` in server and restart the API.";
+    if (options?.allowMissing) {
+      res.status(200).json({ integrations: [], warning: message });
+    } else {
+      res.status(500).json({ message });
+    }
     return null;
   }
 
@@ -414,7 +419,7 @@ router.get("/tenants/:tenantId/integrations/gmail", requireAuth, requireTenantCo
     return res.status(403).json({ message: "Tenant mismatch" });
   }
 
-  const models = resolveGmailModels(res);
+  const models = resolveGmailModels(res, { allowMissing: true });
   if (!models) return;
 
   let integrations;
@@ -425,7 +430,11 @@ router.get("/tenants/:tenantId/integrations/gmail", requireAuth, requireTenantCo
       orderBy: { createdAt: "desc" },
     });
   } catch (error) {
-    if (respondToMissingGmailTables(res, error)) return;
+    if (isMissingGmailTables(error)) {
+      return res
+        .status(200)
+        .json({ integrations: [], warning: "Gmail tables are missing. Run `prisma migrate` in server." });
+    }
     throw error;
   }
 
