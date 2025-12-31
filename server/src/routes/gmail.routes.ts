@@ -7,7 +7,7 @@ import type { google as GoogleApis } from "googleapis";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { requireTenantContext } from "../middleware/rbac";
-import { prisma } from "../prisma";
+import { getPrismaClient, prisma } from "../prisma";
 import { encryptSecret } from "../security/encryption";
 import { signState, verifyState } from "../security/tokens";
 import { writeAuditLog } from "../security/audit";
@@ -91,11 +91,14 @@ type GmailModels = {
 };
 
 function resolveGmailModels(res: Response): GmailModels | null {
-  const client = prisma as typeof prisma & Partial<GmailModels>;
+  const client = getPrismaClient() as typeof prisma & Partial<GmailModels>;
   if (!client.gmailIntegration || !client.gmailRule) {
     res
       .status(500)
-      .json({ message: "Prisma client missing Gmail models. Run `prisma generate` in server." });
+      .json({
+        message:
+          "Prisma client missing Gmail models. Run `prisma generate` in server and restart the API.",
+      });
     return null;
   }
 

@@ -24,10 +24,21 @@ const loadFreshClient = () => {
 
 let prismaInstance = global.__prisma ?? createClient(PrismaClient);
 
-if (!hasGmailModels(prismaInstance)) {
-  prismaInstance = loadFreshClient();
-}
+const ensureGmailModels = () => {
+  if (!hasGmailModels(prismaInstance)) {
+    prismaInstance = loadFreshClient();
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    global.__prisma = prismaInstance;
+  }
+
+  return prismaInstance;
+};
+
+prismaInstance = ensureGmailModels();
 
 export const prisma = prismaInstance;
+export const getPrismaClient = () => ensureGmailModels();
 
 if (process.env.NODE_ENV !== "production") global.__prisma = prisma;
