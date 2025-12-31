@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { AuthState, LoginResponse } from "./authTypes";
-import { loginThunk } from "./authThunks";
+import { fetchMeThunk, loginThunk } from "./authThunks";
 import { storage } from "../../lib/storage";
 
 type AccessTokenPayload = {
@@ -91,6 +91,28 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.accessToken = null;
         state.error = action.payload ?? "Login failed.";
+      })
+      .addCase(fetchMeThunk.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(fetchMeThunk.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.error = null;
+        state.user = action.payload.user ?? null;
+        state.tenantId = action.payload.auth?.tenantId ?? state.tenantId;
+        state.role = action.payload.auth?.role ?? state.role;
+        state.isAuthenticated = true;
+      })
+      .addCase(fetchMeThunk.rejected, (state, action) => {
+        storage.clearAll();
+        state.status = "failed";
+        state.isAuthenticated = false;
+        state.accessToken = null;
+        state.user = null;
+        state.tenantId = null;
+        state.role = null;
+        state.error = action.payload ?? "Session expired.";
       });
   },
 });

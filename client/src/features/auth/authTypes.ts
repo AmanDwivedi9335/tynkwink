@@ -13,6 +13,18 @@ export type LoginResponse = {
     redirectTo?: string;
 };
 
+export type MeResponse = {
+    user: {
+        id: string;
+        name?: string | null;
+        email?: string | null;
+    };
+    auth: {
+        tenantId?: string | null;
+        role?: string | null;
+    };
+};
+
 export type AuthState = {
     status: "idle", "loading", "succeeded", "failed";
     isAuthenticated: boolean;

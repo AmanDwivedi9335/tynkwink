@@ -34,7 +34,13 @@ api.interceptors.response.use(
         const isRefreshEndpoint = originalConfig.url?.includes('/auth/refresh-token');
         const refreshToken = storage.getRefreshToken();
 
-        if (status !== 401 || !refreshToken || isRefreshEndpoint) {
+        if (status !== 401 || isRefreshEndpoint) {
+            return Promise.reject(error);
+        }
+
+        if (!refreshToken) {
+            storage.clearAll();
+            window.location.replace("/login");
             return Promise.reject(error);
         }
 
@@ -85,6 +91,7 @@ api.interceptors.response.use(
         } catch (refreshError) {
             processQueue(null);
             storage.clearAll();
+            window.location.replace("/login");
             return Promise.reject(refreshError);
         } finally {
             isRefreshing = false;
