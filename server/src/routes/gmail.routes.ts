@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import type { Response } from "express";
 import type { google as GoogleApis } from "googleapis";
@@ -85,6 +86,21 @@ function resolveGmailModels(res: Response): GmailModels | null {
   }
 
   return { gmailIntegration: client.gmailIntegration, gmailRule: client.gmailRule };
+}
+
+function isMissingGmailTables(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2021" || error.code === "P2022")
+  );
+}
+
+function respondToMissingGmailTables(res: Response, error: unknown) {
+  if (!isMissingGmailTables(error)) return false;
+  res
+    .status(503)
+    .json({ message: "Gmail tables are missing. Run `prisma migrate` in server." });
+  return true;
 }
 
 function resolveDefaultRedirect() {
@@ -347,11 +363,17 @@ router.get("/tenants/:tenantId/integrations/gmail", requireAuth, requireTenantCo
   const models = resolveGmailModels(res);
   if (!models) return;
 
-  const integrations = await models.gmailIntegration.findMany({
-    where: { tenantId },
-    include: { syncState: true },
-    orderBy: { createdAt: "desc" },
-  });
+  let integrations;
+  try {
+    integrations = await models.gmailIntegration.findMany({
+      where: { tenantId },
+      include: { syncState: true },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    if (respondToMissingGmailTables(res, error)) return;
+    throw error;
+  }
 
   return res.json({ integrations });
 });
