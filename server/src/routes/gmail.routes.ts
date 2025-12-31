@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { Router } from "express";
+import type { Response } from "express";
 import type { google as GoogleApis } from "googleapis";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
@@ -67,6 +68,23 @@ const MAX_REASON_LENGTH = 180;
 function sanitizeReason(reason?: string | null) {
   if (!reason) return undefined;
   return reason.toString().slice(0, MAX_REASON_LENGTH);
+}
+
+type GmailModels = {
+  gmailIntegration: typeof prisma.gmailIntegration;
+  gmailRule: typeof prisma.gmailRule;
+};
+
+function resolveGmailModels(res: Response): GmailModels | null {
+  const client = prisma as typeof prisma & Partial<GmailModels>;
+  if (!client.gmailIntegration || !client.gmailRule) {
+    res
+      .status(500)
+      .json({ message: "Prisma client missing Gmail models. Run `prisma generate` in server." });
+    return null;
+  }
+
+  return { gmailIntegration: client.gmailIntegration, gmailRule: client.gmailRule };
 }
 
 function resolveDefaultRedirect() {
@@ -234,7 +252,10 @@ router.get("/integrations/gmail/callback", async (req, res) => {
     const encryptedRefreshToken = encryptSecret(tokens.refresh_token);
     const scopes = tokens.scope ?? gmailScopes.join(" ");
 
-    const integration = await prisma.gmailIntegration.upsert({
+    const models = resolveGmailModels(res);
+    if (!models) return;
+
+    const integration = await models.gmailIntegration.upsert({
       where: { tenantId_gmailAddress: { tenantId: parsedState.tenantId, gmailAddress } },
       update: {
         encryptedRefreshToken,
@@ -297,7 +318,10 @@ router.post(
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const integration = await prisma.gmailIntegration.update({
+    const models = resolveGmailModels(res);
+    if (!models) return;
+
+    const integration = await models.gmailIntegration.update({
       where: { id: integrationId, tenantId },
       data: { status: "REVOKED" },
     });
@@ -320,7 +344,10 @@ router.get("/tenants/:tenantId/integrations/gmail", requireAuth, requireTenantCo
     return res.status(403).json({ message: "Tenant mismatch" });
   }
 
-  const integrations = await prisma.gmailIntegration.findMany({
+  const models = resolveGmailModels(res);
+  if (!models) return;
+
+  const integrations = await models.gmailIntegration.findMany({
     where: { tenantId },
     include: { syncState: true },
     orderBy: { createdAt: "desc" },
@@ -352,12 +379,15 @@ router.post(
       return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
     }
 
-    const integration = await prisma.gmailIntegration.findFirst({ where: { id: integrationId, tenantId } });
+    const models = resolveGmailModels(res);
+    if (!models) return;
+
+    const integration = await models.gmailIntegration.findFirst({ where: { id: integrationId, tenantId } });
     if (!integration) {
       return res.status(404).json({ message: "Integration not found" });
     }
 
-    const rule = await prisma.gmailRule.create({
+    const rule = await models.gmailRule.create({
       data: {
         tenantId,
         integrationId,
@@ -393,7 +423,10 @@ router.get(
       return res.status(403).json({ message: "Tenant mismatch" });
     }
 
-    const rules = await prisma.gmailRule.findMany({
+    const models = resolveGmailModels(res);
+    if (!models) return;
+
+    const rules = await models.gmailRule.findMany({
       where: { tenantId, integrationId },
       orderBy: { createdAt: "desc" },
     });
@@ -426,12 +459,15 @@ router.patch(
       return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
     }
 
-    const existing = await prisma.gmailRule.findFirst({ where: { id: ruleId, tenantId, integrationId } });
+    const models = resolveGmailModels(res);
+    if (!models) return;
+
+    const existing = await models.gmailRule.findFirst({ where: { id: ruleId, tenantId, integrationId } });
     if (!existing) {
       return res.status(404).json({ message: "Rule not found" });
     }
 
-    const updated = await prisma.gmailRule.update({
+    const updated = await models.gmailRule.update({
       where: { id: ruleId },
       data: {
         name: parsed.data.name ?? existing.name,
@@ -473,7 +509,10 @@ router.delete(
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    await prisma.gmailRule.delete({ where: { id: ruleId } });
+    const models = resolveGmailModels(res);
+    if (!models) return;
+
+    await models.gmailRule.delete({ where: { id: ruleId } });
 
     await writeAuditLog({
       tenantId,
