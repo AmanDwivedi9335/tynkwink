@@ -295,6 +295,21 @@ router.get("/integrations/gmail/callback", async (req, res) => {
     }
 
     oauth2.setCredentials(tokens);
+    if (!tokens.access_token) {
+      const accessTokenResponse = await oauth2.getAccessToken();
+      const accessToken =
+        typeof accessTokenResponse === "string" ? accessTokenResponse : accessTokenResponse?.token;
+      if (!accessToken) {
+        return res.redirect(
+          appendParams(redirectBase, {
+            gmailConnect: "error",
+            stage: "oauth_token",
+            reason: "Unable to obtain access token from refresh token.",
+          })
+        );
+      }
+      oauth2.setCredentials({ ...tokens, access_token: accessToken });
+    }
     const oauth2Api = google.oauth2({ auth: oauth2, version: "v2" });
     const profile = await oauth2Api.userinfo.get();
     const gmailAddress = profile.data.email ?? "";
