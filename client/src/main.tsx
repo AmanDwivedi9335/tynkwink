@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
 import { store } from "../src/app/store";
 import { hydrateFromStorage } from "./features/auth/authSlice";
+import { fetchMeThunk } from "./features/auth/authThunks";
+import { storage } from "./lib/storage";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
@@ -21,6 +23,9 @@ const theme = createTheme({
 });
 
 store.dispatch(hydrateFromStorage());
+if (storage.getAccessToken()) {
+  store.dispatch(fetchMeThunk());
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

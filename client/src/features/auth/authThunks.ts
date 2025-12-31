@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../lib/api";
-import type { LoginRequest, LoginResponse } from "./authTypes";
+import type { LoginRequest, LoginResponse, MeResponse } from "./authTypes";
 
 export const loginThunk = createAsyncThunk<
   LoginResponse,
@@ -15,6 +15,20 @@ export const loginThunk = createAsyncThunk<
       err?.response?.data?.message ||
       err?.response?.data?.error ||
       "Login failed. Please verify your credentials.";
+    return rejectWithValue(msg);
+  }
+});
+
+export const fetchMeThunk = createAsyncThunk<
+  MeResponse,
+  void,
+  { rejectValue: string }
+>("auth/me", async (_, { rejectWithValue }) => {
+  try {
+    const res = await api.get("/api/me");
+    return res.data as MeResponse;
+  } catch (err: any) {
+    const msg = err?.response?.data?.message || "Unable to load session.";
     return rejectWithValue(msg);
   }
 });

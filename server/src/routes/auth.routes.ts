@@ -37,7 +37,7 @@ router.post("/login", async (req, res) => {
     const isSuperAdmin = user.memberships.length === 0;
 
     const accessTlt = Number(process.env.ACCESS_TOKEN_TTL_MIN) || 15;
-    const refreshTlt = Number(process.env.REFRESH_TOKEN_TTL_DAYS) || 30;
+    const refreshTlt = Math.max(1, Number(process.env.REFRESH_TOKEN_TTL_DAYS) || 30);
 
     if(isSuperAdmin) {
         const payload = { sub: user.id, role: "SUPERADMIN" as const, tenantId: null };
@@ -132,7 +132,7 @@ router.post ("/refresh-token", async(req, res) => {
         });
 
         const accessTtl = Number(process.env.ACCESS_TOKEN_TTL_MIN ?? 15);
-        const refreshTtl = Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 30);
+        const refreshTtl = Math.max(1, Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 30));
 
         const newAccess = signAccessToken(payload, accessTtl);
         const newRefresh = signRefreshToken(payload, refreshTtl);
