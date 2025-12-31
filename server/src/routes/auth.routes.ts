@@ -57,6 +57,7 @@ router.post("/login", async (req, res) => {
             refreshToken,
             user: { id: user.id, name: user.name, email: user.email },
             role: "SUPERADMIN",
+            tenantId: null,
             activeTenant: null,
             tenants: [],
             redirectTo: "/superamanpanel"
@@ -104,6 +105,7 @@ router.post("/login", async (req, res) => {
         refreshToken,
         user: { id: user.id, name: user.name, email: user.email },
         role: active.role,
+        tenantId: active.tenantId,
         activeTenant: { tenantId: active.tenantId, tenantName: active.tenant.name },
         tenants: memberships.map(m=> ({ tenantId: m.tenantId, tenantName: m.tenant.name, role: m.role  })),
         redirectTo
