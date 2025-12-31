@@ -72,8 +72,8 @@ function sanitizeReason(reason?: string | null) {
 }
 
 type GmailModels = {
-  gmailIntegration: PrismaClient extends { gmailIntegration: infer Delegate } ? Delegate : never;
-  gmailRule: PrismaClient extends { gmailRule: infer Delegate } ? Delegate : never;
+  gmailIntegration: Prisma.GmailIntegrationDelegate;
+  gmailRule: Prisma.GmailRuleDelegate;
 };
 
 function resolveGmailModels(res: Response): GmailModels | null {
