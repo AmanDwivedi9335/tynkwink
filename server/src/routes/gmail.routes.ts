@@ -66,10 +66,23 @@ const ruleSchema = z.object({
 });
 
 const MAX_REASON_LENGTH = 180;
+const GOOGLE_OAUTH_ENV_KEYS = [
+  "GOOGLE_OAUTH_CLIENT_ID",
+  "GOOGLE_OAUTH_CLIENT_SECRET",
+  "GOOGLE_OAUTH_REDIRECT_URI",
+];
 
 function sanitizeReason(reason?: string | null) {
   if (!reason) return undefined;
   return reason.toString().slice(0, MAX_REASON_LENGTH);
+}
+
+function resolveMissingGoogleConfig() {
+  const missing = GOOGLE_OAUTH_ENV_KEYS.filter((key) => !(process.env[key] ?? "").trim());
+  return {
+    missing,
+    message: missing.length > 0 ? `Missing Google OAuth config: ${missing.join(", ")}` : "",
+  };
 }
 
 type GmailModels = {
@@ -102,6 +115,10 @@ function respondToMissingGmailTables(res: Response, error: unknown) {
     .status(503)
     .json({ message: "Gmail tables are missing. Run `prisma migrate` in server." });
   return true;
+}
+
+function isRecordNotFound(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
 }
 
 function resolveDefaultRedirect() {
@@ -141,12 +158,17 @@ router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireT
     return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
   }
 
+  const missingConfig = resolveMissingGoogleConfig();
+  if (missingConfig.missing.length > 0) {
+    return res.status(500).json({
+      message: "Google OAuth config missing",
+      missing: missingConfig.missing,
+    });
+  }
+
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID ?? "";
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI ?? "";
-  if (!clientId || !clientSecret || !redirectUri) {
-    return res.status(500).json({ message: "Google OAuth config missing" });
-  }
 
   const google = await loadGoogleApis();
   if (!google) {
@@ -215,18 +237,30 @@ router.get("/integrations/gmail/callback", async (req, res) => {
     );
   }
 
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID ?? "";
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
-  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI ?? "";
-  if (!clientId || !clientSecret || !redirectUri) {
+  if (!parsedState?.tenantId || !parsedState?.userId) {
+    return res.redirect(
+      appendParams(redirectBase, {
+        gmailConnect: "error",
+        stage: "oauth_state",
+        reason: "Invalid OAuth state payload",
+      })
+    );
+  }
+
+  const missingConfig = resolveMissingGoogleConfig();
+  if (missingConfig.missing.length > 0) {
     return res.redirect(
       appendParams(redirectBase, {
         gmailConnect: "error",
         stage: "oauth_config",
-        reason: "Google OAuth config missing",
+        reason: sanitizeReason(missingConfig.message || "Google OAuth config missing"),
       })
     );
   }
+
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID ?? "";
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI ?? "";
 
   const google = await loadGoogleApis();
   if (!google) {
@@ -272,22 +306,28 @@ router.get("/integrations/gmail/callback", async (req, res) => {
     const models = resolveGmailModels(res);
     if (!models) return;
 
-    const integration = await models.gmailIntegration.upsert({
-      where: { tenantId_gmailAddress: { tenantId: parsedState.tenantId, gmailAddress } },
-      update: {
-        encryptedRefreshToken,
-        scopes,
-        status: "ACTIVE",
-      },
-      create: {
-        tenantId: parsedState.tenantId,
-        createdByUserId: parsedState.userId,
-        gmailAddress,
-        encryptedRefreshToken,
-        scopes,
-        status: "ACTIVE",
-      },
-    });
+    let integration;
+    try {
+      integration = await models.gmailIntegration.upsert({
+        where: { tenantId_gmailAddress: { tenantId: parsedState.tenantId, gmailAddress } },
+        update: {
+          encryptedRefreshToken,
+          scopes,
+          status: "ACTIVE",
+        },
+        create: {
+          tenantId: parsedState.tenantId,
+          createdByUserId: parsedState.userId,
+          gmailAddress,
+          encryptedRefreshToken,
+          scopes,
+          status: "ACTIVE",
+        },
+      });
+    } catch (error) {
+      if (respondToMissingGmailTables(res, error)) return;
+      throw error;
+    }
 
     await writeAuditLog({
       tenantId: parsedState.tenantId,
@@ -307,6 +347,7 @@ router.get("/integrations/gmail/callback", async (req, res) => {
       })
     );
   } catch (error: any) {
+    if (respondToMissingGmailTables(res, error)) return;
     return res.redirect(
       appendParams(redirectBase, {
         gmailConnect: "error",
@@ -338,10 +379,19 @@ router.post(
     const models = resolveGmailModels(res);
     if (!models) return;
 
-    const integration = await models.gmailIntegration.update({
-      where: { id: integrationId, tenantId },
-      data: { status: "REVOKED" },
-    });
+    let integration;
+    try {
+      integration = await models.gmailIntegration.update({
+        where: { id: integrationId, tenantId },
+        data: { status: "REVOKED" },
+      });
+    } catch (error) {
+      if (respondToMissingGmailTables(res, error)) return;
+      if (isRecordNotFound(error)) {
+        return res.status(404).json({ message: "Integration not found" });
+      }
+      throw error;
+    }
 
     await writeAuditLog({
       tenantId,
@@ -405,22 +455,34 @@ router.post(
     const models = resolveGmailModels(res);
     if (!models) return;
 
-    const integration = await models.gmailIntegration.findFirst({ where: { id: integrationId, tenantId } });
+    let integration;
+    try {
+      integration = await models.gmailIntegration.findFirst({ where: { id: integrationId, tenantId } });
+    } catch (error) {
+      if (respondToMissingGmailTables(res, error)) return;
+      throw error;
+    }
     if (!integration) {
       return res.status(404).json({ message: "Integration not found" });
     }
 
-    const rule = await models.gmailRule.create({
-      data: {
-        tenantId,
-        integrationId,
-        name: parsed.data.name,
-        isActive: parsed.data.isActive ?? true,
-        conditionsJson: parsed.data.conditions,
-        createdBy: userId,
-        version: 1,
-      },
-    });
+    let rule;
+    try {
+      rule = await models.gmailRule.create({
+        data: {
+          tenantId,
+          integrationId,
+          name: parsed.data.name,
+          isActive: parsed.data.isActive ?? true,
+          conditionsJson: parsed.data.conditions,
+          createdBy: userId,
+          version: 1,
+        },
+      });
+    } catch (error) {
+      if (respondToMissingGmailTables(res, error)) return;
+      throw error;
+    }
 
     await writeAuditLog({
       tenantId,
@@ -449,10 +511,16 @@ router.get(
     const models = resolveGmailModels(res);
     if (!models) return;
 
-    const rules = await models.gmailRule.findMany({
-      where: { tenantId, integrationId },
-      orderBy: { createdAt: "desc" },
-    });
+    let rules;
+    try {
+      rules = await models.gmailRule.findMany({
+        where: { tenantId, integrationId },
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (error) {
+      if (respondToMissingGmailTables(res, error)) return;
+      throw error;
+    }
 
     return res.json({ rules });
   }
@@ -485,20 +553,35 @@ router.patch(
     const models = resolveGmailModels(res);
     if (!models) return;
 
-    const existing = await models.gmailRule.findFirst({ where: { id: ruleId, tenantId, integrationId } });
+    let existing;
+    try {
+      existing = await models.gmailRule.findFirst({ where: { id: ruleId, tenantId, integrationId } });
+    } catch (error) {
+      if (respondToMissingGmailTables(res, error)) return;
+      throw error;
+    }
     if (!existing) {
       return res.status(404).json({ message: "Rule not found" });
     }
 
-    const updated = await models.gmailRule.update({
-      where: { id: ruleId },
-      data: {
-        name: parsed.data.name ?? existing.name,
-        isActive: parsed.data.isActive ?? existing.isActive,
-        conditionsJson: parsed.data.conditions ?? existing.conditionsJson,
-        version: existing.version + 1,
-      },
-    });
+    let updated;
+    try {
+      updated = await models.gmailRule.update({
+        where: { id: ruleId },
+        data: {
+          name: parsed.data.name ?? existing.name,
+          isActive: parsed.data.isActive ?? existing.isActive,
+          conditionsJson: parsed.data.conditions ?? existing.conditionsJson,
+          version: existing.version + 1,
+        },
+      });
+    } catch (error) {
+      if (respondToMissingGmailTables(res, error)) return;
+      if (isRecordNotFound(error)) {
+        return res.status(404).json({ message: "Rule not found" });
+      }
+      throw error;
+    }
 
     await writeAuditLog({
       tenantId,
@@ -535,7 +618,15 @@ router.delete(
     const models = resolveGmailModels(res);
     if (!models) return;
 
-    await models.gmailRule.delete({ where: { id: ruleId } });
+    try {
+      await models.gmailRule.delete({ where: { id: ruleId } });
+    } catch (error) {
+      if (respondToMissingGmailTables(res, error)) return;
+      if (isRecordNotFound(error)) {
+        return res.status(404).json({ message: "Rule not found" });
+      }
+      throw error;
+    }
 
     await writeAuditLog({
       tenantId,
