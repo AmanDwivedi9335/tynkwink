@@ -537,6 +537,9 @@ router.patch(
     const userId = req.auth?.sub;
     const role = req.auth?.role;
     if (!userId || !role) return res.status(401).json({ message: "Unauthenticated" });
+    if (!tenantId || !integrationId || !ruleId) {
+      return res.status(400).json({ message: "Missing route parameters" });
+    }
     if (tenantId !== req.auth?.tenantId) {
       return res.status(403).json({ message: "Tenant mismatch" });
     }
@@ -607,6 +610,9 @@ router.delete(
     const userId = req.auth?.sub;
     const role = req.auth?.role;
     if (!userId || !role) return res.status(401).json({ message: "Unauthenticated" });
+    if (!tenantId || !integrationId || !ruleId) {
+      return res.status(400).json({ message: "Missing route parameters" });
+    }
     if (tenantId !== req.auth?.tenantId) {
       return res.status(403).json({ message: "Tenant mismatch" });
     }
