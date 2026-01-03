@@ -394,13 +394,13 @@ router.get("/integrations/gmail/callback", async (req, res) => {
       }
       oauth2.setCredentials({ ...tokens, access_token: accessToken.token });
     }
-    const oauth2Api = google.oauth2({ auth: oauth2, version: "v2" });
+    const gmailApi = google.gmail({ auth: oauth2, version: "v1" });
     logOauthDebug("OAuth profile request starting", {
       tenantId: parsedState.tenantId,
       userId: parsedState.userId,
     });
-    const profile = await oauth2Api.userinfo.get();
-    const gmailAddress = profile.data.email ?? "";
+    const profile = await gmailApi.users.getProfile({ userId: "me" });
+    const gmailAddress = profile.data.emailAddress ?? "";
     if (!gmailAddress) {
       logOauthWarn("OAuth profile missing Gmail address", {
         tenantId: parsedState.tenantId,
