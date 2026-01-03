@@ -18,6 +18,7 @@ model Tenant {
   inbound           InboundItem[]
   gmailIntegrations GmailIntegration[]
   gmailAccess       GmailIntegrationAccess[]
+  gmailRules        GmailRule[]
   leadInbox         LeadInbox[]
   leads             Lead[]
   stages            LeadStage[]
