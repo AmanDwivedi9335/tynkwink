@@ -124,13 +124,21 @@ type GmailModels = {
 
 function resolveGmailModels(
   res: Response,
-  options?: { allowMissing?: boolean; missingMessage?: string }
+  options?: {
+    allowMissing?: boolean;
+    missingMessage?: string;
+    onMissing?: (message: string) => void;
+  }
 ): GmailModels | null {
   const client = getPrismaClient() as typeof prisma & Partial<GmailModels>;
   if (!client.gmailIntegration || !client.gmailRule) {
     const message =
       options?.missingMessage ??
       "Prisma client missing Gmail models. Run `prisma generate` in server and restart the API.";
+    if (options?.onMissing) {
+      options.onMissing(message);
+      return null;
+    }
     if (options?.allowMissing) {
       res.status(200).json({ integrations: [], warning: message });
     } else {
@@ -418,7 +426,18 @@ router.get("/integrations/gmail/callback", async (req, res) => {
     const encryptedRefreshToken = encryptSecret(tokens.refresh_token);
     const scopes = tokens.scope ?? gmailScopes.join(" ");
 
-    const models = resolveGmailModels(res);
+    const models = resolveGmailModels(res, {
+      onMissing: (message) => {
+        logOauthWarn("OAuth callback blocked due to missing Gmail models");
+        res.redirect(
+          appendParams(redirectBase, {
+            gmailConnect: "error",
+            stage: "oauth_setup",
+            reason: sanitizeReason(message),
+          })
+        );
+      },
+    });
     if (!models) return;
 
     let integration;
