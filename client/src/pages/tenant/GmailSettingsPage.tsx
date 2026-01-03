@@ -46,6 +46,8 @@ export default function GmailSettingsPage() {
     null
   );
   const [loading, setLoading] = useState(false);
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [pendingLoading, setPendingLoading] = useState(false);
 
   const selected = useMemo(() => integrations.find((integration) => integration.id === selectedIntegration), [
     integrations,
@@ -105,6 +107,21 @@ export default function GmailSettingsPage() {
       .catch(() => setError("Unable to load Gmail integrations."));
   }, [tenantId]);
 
+  const refreshPendingCount = async () => {
+    if (!tenantId) return;
+    setPendingLoading(true);
+    try {
+      const response = await api.get(`/api/tenants/${tenantId}/lead-inbox`, {
+        params: { status: "PENDING" },
+      });
+      setPendingCount(response.data.inbox?.length ?? 0);
+    } catch {
+      setError("Unable to load pending Gmail leads.");
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!tenantId || !selectedIntegration) return;
     api
@@ -112,6 +129,11 @@ export default function GmailSettingsPage() {
       .then((response) => setRules(response.data.rules ?? []))
       .catch(() => setError("Unable to load Gmail rules."));
   }, [tenantId, selectedIntegration]);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    void refreshPendingCount();
+  }, [tenantId]);
 
   const handleConnect = async () => {
     if (!tenantId) {
@@ -132,6 +154,47 @@ export default function GmailSettingsPage() {
       window.location.assign(connectUrl);
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Unable to start Gmail OAuth flow.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnect = async (integrationId: string) => {
+    if (!tenantId) {
+      setError("Missing tenant context. Please refresh and select a tenant before disconnecting Gmail.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await api.post(`/api/tenants/${tenantId}/integrations/gmail/${integrationId}/disconnect`);
+      const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
+      setIntegrations(response.data.integrations ?? []);
+      if (selectedIntegration === integrationId) {
+        const next = response.data.integrations?.[0]?.id ?? "";
+        setSelectedIntegration(next);
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "Unable to disconnect Gmail.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSyncNow = async (integrationId: string) => {
+    if (!tenantId) {
+      setError("Missing tenant context. Please refresh and select a tenant before checking Gmail.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await api.post(`/api/tenants/${tenantId}/integrations/gmail/${integrationId}/sync`);
+      await refreshPendingCount();
+      const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
+      setIntegrations(response.data.integrations ?? []);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "Unable to sync Gmail right now.");
     } finally {
       setLoading(false);
     }
@@ -203,6 +266,14 @@ export default function GmailSettingsPage() {
         <Typography variant="h6" fontWeight={700}>
           Connected Accounts
         </Typography>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mt: 2, alignItems: "center" }}>
+          <Typography color="text.secondary">
+            Pending Gmail leads: {pendingCount === null ? "—" : pendingCount}
+          </Typography>
+          <Button variant="outlined" size="small" onClick={refreshPendingCount} disabled={pendingLoading}>
+            Refresh pending
+          </Button>
+        </Stack>
         <Stack spacing={2} sx={{ mt: 2 }}>
           {integrations.length === 0 ? (
             <Typography color="text.secondary">No Gmail accounts connected yet.</Typography>
@@ -235,6 +306,23 @@ export default function GmailSettingsPage() {
                     onClick={() => setSelectedIntegration(integration.id)}
                   >
                     Manage Rules
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handleSyncNow(integration.id)}
+                    disabled={loading}
+                  >
+                    Check Mail
+                  </Button>
+                  <Button
+                    variant="text"
+                    color="error"
+                    size="small"
+                    onClick={() => handleDisconnect(integration.id)}
+                    disabled={loading}
+                  >
+                    Disconnect
                   </Button>
                 </Stack>
               </Paper>

@@ -564,6 +564,40 @@ router.post(
   }
 );
 
+router.post(
+  "/tenants/:tenantId/integrations/gmail/:integrationId/sync",
+  requireAuth,
+  requireTenantContext,
+  async (req, res) => {
+    const tenantId = req.params.tenantId;
+    const integrationId = req.params.integrationId;
+    const userId = req.auth?.sub;
+    const role = req.auth?.role;
+    if (!userId || !role) return res.status(401).json({ message: "Unauthenticated" });
+    if (tenantId !== req.auth?.tenantId) {
+      return res.status(403).json({ message: "Tenant mismatch" });
+    }
+
+    if (!(await canManageIntegrations({ tenantId, userId, role }))) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const models = resolveGmailModels(res);
+    if (!models) return;
+
+    const integration = await models.gmailIntegration.findFirst({
+      where: { id: integrationId, tenantId },
+    });
+    if (!integration) {
+      return res.status(404).json({ message: "Integration not found" });
+    }
+
+    await gmailSyncQueue.add("gmail.sync", { integrationId }, { jobId: `gmail.sync.${integrationId}` });
+
+    return res.json({ queued: true });
+  }
+);
+
 router.get("/tenants/:tenantId/integrations/gmail", requireAuth, requireTenantContext, async (req, res) => {
   const tenantId = req.params.tenantId;
   if (tenantId !== req.auth?.tenantId) {
