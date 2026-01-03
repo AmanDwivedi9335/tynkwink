@@ -423,6 +423,20 @@ router.get("/integrations/gmail/callback", async (req, res) => {
       );
     }
 
+    if (!tokens.refresh_token) {
+      logOauthWarn("OAuth callback missing refresh token", {
+        tenantId: parsedState.tenantId,
+        userId: parsedState.userId,
+      });
+      return res.redirect(
+        appendParams(redirectBase, {
+          gmailConnect: "error",
+          stage: "oauth_token",
+          reason: "Missing refresh token",
+        })
+      );
+    }
+
     const encryptedRefreshToken = encryptSecret(tokens.refresh_token);
     const scopes = tokens.scope ?? gmailScopes.join(" ");
 
