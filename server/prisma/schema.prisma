@@ -178,7 +178,7 @@ model GmailIntegration {
   tenantId              String
   createdByUserId       String
   gmailAddress          String
-  encryptedRefreshToken String
+  encryptedRefreshToken String                @db.Text
   scopes                String
   status                GmailIntegrationStatus @default(ACTIVE)
   createdAt             DateTime              @default(now())
