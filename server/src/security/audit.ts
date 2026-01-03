@@ -8,8 +8,17 @@ export async function writeAuditLog(params: {
   entityId?: string | null;
   meta?: Record<string, unknown>;
 }) {
+  const client = prisma as typeof prisma & {
+    auditLog?: {
+      create: typeof prisma.auditLog.create;
+    };
+  };
+  if (!client.auditLog) {
+    console.warn("[audit-log] Prisma client missing AuditLog model. Run `prisma generate` in server.");
+    return;
+  }
   const { tenantId, actorUserId, actionType, entityType, entityId, meta } = params;
-  await prisma.auditLog.create({
+  await client.auditLog.create({
     data: {
       tenantId,
       actorUserId: actorUserId ?? null,
