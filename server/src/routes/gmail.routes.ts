@@ -18,6 +18,7 @@ import { gmailSyncQueue } from "../queues/queues";
 const router = Router();
 
 const gmailScopes = ["https://www.googleapis.com/auth/gmail.readonly"];
+const GMAIL_OAUTH_LOG_PREFIX = "[gmail-oauth]";
 
 const loadGoogleApis = () =>
   import("googleapis")
@@ -75,6 +76,37 @@ const GOOGLE_OAUTH_ENV_KEYS = [
 function sanitizeReason(reason?: string | null) {
   if (!reason) return undefined;
   return reason.toString().slice(0, MAX_REASON_LENGTH);
+}
+
+function logOauthDebug(message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.info(`${GMAIL_OAUTH_LOG_PREFIX} ${message}`, details);
+    return;
+  }
+  console.info(`${GMAIL_OAUTH_LOG_PREFIX} ${message}`);
+}
+
+function logOauthWarn(message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.warn(`${GMAIL_OAUTH_LOG_PREFIX} ${message}`, details);
+    return;
+  }
+  console.warn(`${GMAIL_OAUTH_LOG_PREFIX} ${message}`);
+}
+
+function logOauthError(message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.error(`${GMAIL_OAUTH_LOG_PREFIX} ${message}`, details);
+    return;
+  }
+  console.error(`${GMAIL_OAUTH_LOG_PREFIX} ${message}`);
+}
+
+function extractGoogleErrorDetails(error: any) {
+  const responseStatus = error?.response?.status;
+  const responseData = error?.response?.data;
+  const message = error?.message ?? "Unknown error";
+  return { message, responseStatus, responseData };
 }
 
 function resolveMissingGoogleConfig() {
@@ -166,8 +198,15 @@ router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireT
     return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
   }
 
+  logOauthDebug("OAuth start initiated", {
+    tenantId,
+    userId,
+    hasRedirectUri: Boolean(parsed.data.redirectUri),
+  });
+
   const missingConfig = resolveMissingGoogleConfig();
   if (missingConfig.missing.length > 0) {
+    logOauthWarn("OAuth start blocked due to missing config", { missing: missingConfig.missing });
     return res.status(500).json({
       message: "Google OAuth config missing",
       missing: missingConfig.missing,
@@ -180,6 +219,7 @@ router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireT
 
   const google = await loadGoogleApis();
   if (!google) {
+    logOauthError("OAuth start failed to load Google APIs");
     return res.status(500).json({ message: "Google APIs dependency missing. Run npm install in server." });
   }
 
@@ -199,6 +239,7 @@ router.post("/tenants/:tenantId/integrations/gmail/start", requireAuth, requireT
     state,
   });
 
+  logOauthDebug("OAuth start generated auth URL", { tenantId, userId });
   return res.json({ url });
 });
 
@@ -209,12 +250,24 @@ router.get("/integrations/gmail/callback", async (req, res) => {
   const errorDescription = req.query.error_description as string | undefined;
   let redirectBase = resolveDefaultRedirect();
 
+  logOauthDebug("OAuth callback received", {
+    hasCode: Boolean(code),
+    hasState: Boolean(state),
+    errorParam,
+  });
+
   let parsedState;
   if (state) {
     try {
       parsedState = verifyState(state);
       redirectBase = parsedState.redirectUri ?? redirectBase;
+      logOauthDebug("OAuth state verified", {
+        tenantId: parsedState.tenantId,
+        userId: parsedState.userId,
+        hasRedirectUri: Boolean(parsedState.redirectUri),
+      });
     } catch (error) {
+      logOauthWarn("OAuth state verification failed");
       return res.redirect(
         appendParams(redirectBase, {
           gmailConnect: "error",
@@ -226,6 +279,10 @@ router.get("/integrations/gmail/callback", async (req, res) => {
   }
 
   if (errorParam) {
+    logOauthWarn("OAuth consent returned error", {
+      errorParam,
+      errorDescription,
+    });
     return res.redirect(
       appendParams(redirectBase, {
         gmailConnect: "error",
@@ -236,6 +293,7 @@ router.get("/integrations/gmail/callback", async (req, res) => {
   }
 
   if (!code || !state) {
+    logOauthWarn("OAuth callback missing parameters", { hasCode: Boolean(code), hasState: Boolean(state) });
     return res.redirect(
       appendParams(redirectBase, {
         gmailConnect: "error",
@@ -246,6 +304,10 @@ router.get("/integrations/gmail/callback", async (req, res) => {
   }
 
   if (!parsedState?.tenantId || !parsedState?.userId) {
+    logOauthWarn("OAuth state payload missing identifiers", {
+      tenantId: parsedState?.tenantId,
+      userId: parsedState?.userId,
+    });
     return res.redirect(
       appendParams(redirectBase, {
         gmailConnect: "error",
@@ -257,6 +319,7 @@ router.get("/integrations/gmail/callback", async (req, res) => {
 
   const missingConfig = resolveMissingGoogleConfig();
   if (missingConfig.missing.length > 0) {
+    logOauthWarn("OAuth callback blocked due to missing config", { missing: missingConfig.missing });
     return res.redirect(
       appendParams(redirectBase, {
         gmailConnect: "error",
@@ -272,6 +335,7 @@ router.get("/integrations/gmail/callback", async (req, res) => {
 
   const google = await loadGoogleApis();
   if (!google) {
+    logOauthError("OAuth callback failed to load Google APIs");
     return res.redirect(
       appendParams(redirectBase, {
         gmailConnect: "error",
@@ -283,8 +347,22 @@ router.get("/integrations/gmail/callback", async (req, res) => {
 
   try {
     const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+    logOauthDebug("OAuth token exchange starting", {
+      tenantId: parsedState.tenantId,
+      userId: parsedState.userId,
+    });
     const { tokens } = await oauth2.getToken(code);
+    logOauthDebug("OAuth token exchange completed", {
+      hasRefreshToken: Boolean(tokens.refresh_token),
+      hasAccessToken: Boolean(tokens.access_token),
+      hasScope: Boolean(tokens.scope),
+      tokenType: tokens.token_type,
+    });
     if (!tokens.refresh_token) {
+      logOauthWarn("OAuth token exchange missing refresh token", {
+        tenantId: parsedState.tenantId,
+        userId: parsedState.userId,
+      });
       return res.redirect(
         appendParams(redirectBase, {
           gmailConnect: "error",
@@ -296,8 +374,16 @@ router.get("/integrations/gmail/callback", async (req, res) => {
 
     oauth2.setCredentials(tokens);
     if (!tokens.access_token) {
+      logOauthDebug("OAuth access token missing, attempting refresh", {
+        tenantId: parsedState.tenantId,
+        userId: parsedState.userId,
+      });
       const accessToken = await oauth2.getAccessToken();
       if (!accessToken?.token) {
+        logOauthWarn("OAuth access token refresh failed", {
+          tenantId: parsedState.tenantId,
+          userId: parsedState.userId,
+        });
         return res.redirect(
           appendParams(redirectBase, {
             gmailConnect: "error",
@@ -309,9 +395,17 @@ router.get("/integrations/gmail/callback", async (req, res) => {
       oauth2.setCredentials({ ...tokens, access_token: accessToken.token });
     }
     const oauth2Api = google.oauth2({ auth: oauth2, version: "v2" });
+    logOauthDebug("OAuth profile request starting", {
+      tenantId: parsedState.tenantId,
+      userId: parsedState.userId,
+    });
     const profile = await oauth2Api.userinfo.get();
     const gmailAddress = profile.data.email ?? "";
     if (!gmailAddress) {
+      logOauthWarn("OAuth profile missing Gmail address", {
+        tenantId: parsedState.tenantId,
+        userId: parsedState.userId,
+      });
       return res.redirect(
         appendParams(redirectBase, {
           gmailConnect: "error",
@@ -360,6 +454,12 @@ router.get("/integrations/gmail/callback", async (req, res) => {
 
     await gmailSyncQueue.add("gmail.sync", { integrationId: integration.id }, { jobId: `gmail.sync.${integration.id}` });
 
+    logOauthDebug("OAuth flow completed", {
+      tenantId: parsedState.tenantId,
+      userId: parsedState.userId,
+      integrationId: integration.id,
+    });
+
     const redirectTo = parsedState.redirectUri ?? redirectBase;
     return res.redirect(
       appendParams(redirectTo, {
@@ -369,6 +469,11 @@ router.get("/integrations/gmail/callback", async (req, res) => {
     );
   } catch (error: any) {
     if (respondToMissingGmailTables(res, error)) return;
+    logOauthError("OAuth callback failed", {
+      tenantId: parsedState?.tenantId,
+      userId: parsedState?.userId,
+      ...extractGoogleErrorDetails(error),
+    });
     return res.redirect(
       appendParams(redirectBase, {
         gmailConnect: "error",
