@@ -45,6 +45,7 @@ export default function GmailSettingsPage() {
   const [connectAlert, setConnectAlert] = useState<{ severity: "success" | "error"; title: string; detail?: string } | null>(
     null
   );
+  const [syncAlert, setSyncAlert] = useState<{ severity: "success" | "info" | "error"; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
@@ -188,11 +189,21 @@ export default function GmailSettingsPage() {
     }
     setLoading(true);
     setError(null);
+    setSyncAlert(null);
     try {
-      await api.post(`/api/tenants/${tenantId}/integrations/gmail/${integrationId}/sync`);
+      const response = await api.post(`/api/tenants/${tenantId}/integrations/gmail/${integrationId}/sync`);
+      const status = response.data?.status;
+      if (status === "already_queued") {
+        setSyncAlert({
+          severity: "info",
+          message: "A sync is already queued. Please wait a moment and refresh pending leads.",
+        });
+      } else {
+        setSyncAlert({ severity: "success", message: "Gmail sync queued. Refresh pending leads in a moment." });
+      }
       await refreshPendingCount();
-      const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
-      setIntegrations(response.data.integrations ?? []);
+      const integrationsResponse = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
+      setIntegrations(integrationsResponse.data.integrations ?? []);
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Unable to sync Gmail right now.");
     } finally {
@@ -261,6 +272,7 @@ export default function GmailSettingsPage() {
       ) : null}
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+      {syncAlert ? <Alert severity={syncAlert.severity}>{syncAlert.message}</Alert> : null}
 
       <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid", borderColor: "divider", p: 3 }}>
         <Typography variant="h6" fontWeight={700}>
@@ -335,6 +347,16 @@ export default function GmailSettingsPage() {
         <Typography variant="h6" fontWeight={700}>
           Rules for {selected?.gmailAddress || "select an account"}
         </Typography>
+        {selectedIntegration && rules.length > 0 && rules.every((rule) => !rule.isActive) ? (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            All rules are inactive. Gmail sync will ignore emails until at least one rule is active.
+          </Alert>
+        ) : null}
+        {selectedIntegration && rules.length === 0 ? (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            No rules yet. Create a rule so Gmail sync knows which emails to import.
+          </Alert>
+        ) : null}
         <Divider sx={{ my: 2 }} />
         <Stack spacing={2}>
           <TextField label="Rule name" value={ruleName} onChange={(event) => setRuleName(event.target.value)} />

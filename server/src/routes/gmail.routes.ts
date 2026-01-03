@@ -485,7 +485,11 @@ router.get("/integrations/gmail/callback", async (req, res) => {
       entityId: integration.id,
     });
 
-    await gmailSyncQueue.add("gmail.sync", { integrationId: integration.id }, { jobId: `gmail.sync.${integration.id}` });
+    await gmailSyncQueue.add(
+      "gmail.sync",
+      { integrationId: integration.id },
+      { jobId: `gmail.sync.${integration.id}`, removeOnComplete: true, removeOnFail: 50 }
+    );
 
     logOauthDebug("OAuth flow completed", {
       tenantId: parsedState.tenantId,
@@ -592,9 +596,25 @@ router.post(
       return res.status(404).json({ message: "Integration not found" });
     }
 
-    await gmailSyncQueue.add("gmail.sync", { integrationId }, { jobId: `gmail.sync.${integrationId}` });
+    const jobId = `gmail.sync.${integrationId}`;
+    const existing = await gmailSyncQueue.getJob(jobId);
+    if (existing) {
+      const state = await existing.getState();
+      if (state === "active" || state === "waiting" || state === "delayed") {
+        return res.json({ queued: true, status: "already_queued" });
+      }
+      if (state === "completed" || state === "failed") {
+        await existing.remove();
+      }
+    }
 
-    return res.json({ queued: true });
+    await gmailSyncQueue.add(
+      "gmail.sync",
+      { integrationId },
+      { jobId, removeOnComplete: true, removeOnFail: 50 }
+    );
+
+    return res.json({ queued: true, status: "queued" });
   }
 );
 
