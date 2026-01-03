@@ -23,18 +23,22 @@ model Tenant {
   leads             Lead[]
   stages            LeadStage[]
   smartTriggerFlows SmartTriggerFlow[]
-  settings          TenantSetting?
+  settings          TenantSettings?
   users             TenantUser[]
 
   @@index([isActive])
 }
 
-model TenantSetting {
-  tenantId      String   @id
-  inboundSecret String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+model TenantSettings {
+  tenantId                        String   @id
+  inboundSecret                   String
+  approvalDigestFrequencyMinutes  Int      @default(60)
+  defaultLeadOwnerUserId          String?
+  openaiEncryptedApiKey           String?  @db.Text
+  timezone                        String   @default("UTC")
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+  tenant                          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model User {
