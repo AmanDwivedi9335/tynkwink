@@ -1,13 +1,171 @@
-// Prisma schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "binary"
 }
 
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                String             @id @default(cuid())
+  name              String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  isActive          Boolean            @default(true)
+  slug              String             @unique
+  inbound           InboundItem[]
+  leads             Lead[]
+  stages            LeadStage[]
+  smartTriggerFlows SmartTriggerFlow[]
+  settings          TenantSetting?
+  users             TenantUser[]
+
+  @@index([isActive])
+}
+
+model TenantSetting {
+  tenantId      String   @id
+  inboundSecret String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  passwordHash     String
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  inboundDecisions InboundDecision[] @relation("InboundDecider")
+  assignedLeads    Lead[]            @relation("LeadAssignee")
+  refreshTokens    RefreshToken[]
+  memberships      TenantUser[]
+
+  @@index([isActive])
+}
+
+model TenantUser {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, role])
+  @@index([userId, role])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String
+  revokedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LeadStage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  position  Int
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  leads     Lead[]
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@unique([tenantId, position])
+  @@index([tenantId, isDeleted])
+}
+
+model Lead {
+  id           String        @id @default(cuid())
+  tenantId     String
+  stageId      String
+  name         String?
+  phone        String?
+  email        String?
+  company      String?
+  notes        String?       @db.Text
+  source       InboundSource
+  assignedTo   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  assignedUser User?         @relation("LeadAssignee", fields: [assignedTo], references: [id])
+  stage        LeadStage     @relation(fields: [stageId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, stageId])
+  @@index([tenantId, phone])
+  @@index([tenantId, email])
+  @@index([tenantId, assignedTo])
+  @@index([assignedTo], map: "Lead_assignedTo_fkey")
+  @@index([stageId], map: "Lead_stageId_fkey")
+}
+
+model InboundItem {
+  id           String           @id @default(cuid())
+  tenantId     String
+  source       InboundSource
+  status       InboundStatus    @default(PENDING_CONFIRMATION)
+  payload      Json
+  name         String?
+  phone        String?
+  email        String?
+  company      String?
+  confirmToken String           @unique
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  decision     InboundDecision?
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, source])
+  @@index([createdAt])
+}
+
+model InboundDecision {
+  id          String                @id @default(cuid())
+  inboundId   String                @unique
+  action      InboundDecisionAction
+  decidedBy   String?
+  decidedAt   DateTime              @default(now())
+  note        String?
+  decidedUser User?                 @relation("InboundDecider", fields: [decidedBy], references: [id])
+  inbound     InboundItem           @relation(fields: [inboundId], references: [id], onDelete: Cascade)
+
+  @@index([decidedBy])
+  @@index([decidedAt])
+}
+
+model SmartTriggerFlow {
+  id          String             @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  status      SmartTriggerStatus @default(DRAFT)
+  steps       Json
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, updatedAt])
 }
 
 enum UserRole {
@@ -31,7 +189,6 @@ enum InboundStatus {
   JUNK
 }
 
-// Important: Decision action should not reuse InboundStatus
 enum InboundDecisionAction {
   IMPORTED
   JUNK
@@ -41,370 +198,4 @@ enum SmartTriggerStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
-}
-
-enum GmailIntegrationStatus {
-  ACTIVE
-  REVOKED
-  ERROR
-}
-
-enum LeadInboxStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  IMPORTED
-  ERROR
-}
-
-enum LeadApprovalAction {
-  APPROVE
-  REJECT
-}
-
-model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users     TenantUser[]
-  settings  TenantSetting?
-  leadSettings TenantSettings?
-  stages    LeadStage[]
-  leads     Lead[]
-  inbound   InboundItem[]
-  smartTriggerFlows SmartTriggerFlow[]
-  gmailIntegrations GmailIntegration[]
-  gmailIntegrationAccesses GmailIntegrationAccess[]
-  gmailRules GmailRule[]
-  leadInboxes LeadInbox[]
-  auditLogs AuditLog[]
-
-  @@index([isActive])
-}
-
-model TenantSetting {
-  tenantId      String  @id
-  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  // Used to validate inbound confirm links
-  inboundSecret String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model TenantSettings {
-  tenantId String @id
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  approvalDigestFrequencyMinutes Int    @default(60)
-  defaultLeadOwnerUserId         String?
-  openaiEncryptedApiKey          String?
-  timezone                       String  @default("UTC")
-  lastApprovalDigestAt           DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([defaultLeadOwnerUserId])
-}
-
-model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  memberships   TenantUser[]
-  refreshTokens RefreshToken[]
-
-  // Leads assigned to this user (across tenants)
-  assignedLeads Lead[] @relation("LeadAssignee")
-
-  inboundDecisions InboundDecision[] @relation("InboundDecider")
-  createdGmailIntegrations GmailIntegration[]
-  gmailIntegrationAccesses GmailIntegrationAccess[]
-  auditLogs AuditLog[]
-
-  @@index([isActive])
-}
-
-model TenantUser {
-  id        String   @id @default(cuid())
-  tenantId  String
-  userId    String
-  role      UserRole
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, userId])
-  @@index([tenantId, role])
-  @@index([userId, role])
-}
-
-model RefreshToken {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String
-  revokedAt  DateTime?
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
-}
-
-model LeadStage {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  name      String
-  position  Int
-  isDeleted Boolean  @default(false)
-
-  leads     Lead[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Prevent duplicate stage names per tenant
-  @@unique([tenantId, name])
-
-  // Prevent duplicate positions per tenant (important for ordered pipelines)
-  @@unique([tenantId, position])
-
-  @@index([tenantId, isDeleted])
-}
-
-model Lead {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  stageId   String
-  stage     LeadStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
-
-  name      String?
-  phone     String?
-  email     String?
-  company   String?
-  notes     String?  @db.Text
-
-  source    InboundSource
-
-  assignedTo   String?
-  assignedUser User? @relation("LeadAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tenantId, stageId])
-  @@index([tenantId, phone])
-  @@index([tenantId, email])
-  @@index([tenantId, assignedTo])
-}
-
-model GmailIntegration {
-  id                    String                 @id @default(cuid())
-  tenantId              String
-  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdByUserId       String
-  createdBy             User                   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
-  gmailAddress          String
-  encryptedRefreshToken String
-  scopes                String
-  status                GmailIntegrationStatus @default(ACTIVE)
-
-  syncState GmailSyncState?
-  rules     GmailRule[]
-  inbox     LeadInbox[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([tenantId, gmailAddress])
-  @@index([tenantId, status])
-}
-
-model GmailIntegrationAccess {
-  id       String @id @default(cuid())
-  tenantId String
-  userId   String
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@unique([tenantId, userId])
-  @@index([tenantId, userId])
-}
-
-model GmailSyncState {
-  integrationId String @id
-  integration   GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-
-  lastHistoryId String?
-  lastSyncAt    DateTime?
-  errorCount    Int      @default(0)
-  lastError     String?
-  backoffUntil  DateTime?
-
-  @@index([lastSyncAt])
-}
-
-model GmailRule {
-  id            String  @id @default(cuid())
-  tenantId      String
-  integrationId String
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  integration   GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-  name          String
-  isActive      Boolean @default(true)
-  conditionsJson Json
-  createdBy     String
-  version       Int     @default(1)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tenantId, integrationId])
-  @@index([tenantId, isActive])
-}
-
-model LeadInbox {
-  id              String  @id @default(cuid())
-  tenantId        String
-  integrationId   String
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  integration     GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-  gmailMessageId  String
-  threadId        String?
-  from            String
-  subject         String?
-  snippet         String?
-  receivedAt      DateTime
-  rawHeadersJson  Json
-  rawBodyText     String? @db.Text
-  status          LeadInboxStatus @default(PENDING)
-  detectedAssigneeHint String?
-  extractedPreviewJson Json?
-  leadId          String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  approvalTokens LeadApprovalToken[]
-
-  @@unique([integrationId, gmailMessageId])
-  @@index([tenantId, status])
-  @@index([tenantId, receivedAt])
-}
-
-model LeadApprovalToken {
-  id          String @id @default(cuid())
-  leadInboxId String
-  tenantId    String
-  leadInbox   LeadInbox @relation(fields: [leadInboxId], references: [id], onDelete: Cascade)
-  tokenHash   String
-  action      LeadApprovalAction
-  expiresAt   DateTime
-  usedAt      DateTime?
-
-  createdAt DateTime @default(now())
-
-  @@index([tenantId, leadInboxId])
-  @@index([expiresAt])
-}
-
-model AuditLog {
-  id         String   @id @default(cuid())
-  tenantId   String
-  actorUserId String?
-  actionType String
-  entityType String
-  entityId   String?
-  metaJson   Json?
-  createdAt  DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actor  User?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
-
-  @@index([tenantId, actionType])
-  @@index([tenantId, createdAt])
-}
-
-model InboundItem {
-  id        String        @id @default(cuid())
-  tenantId  String
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  source    InboundSource
-  status    InboundStatus @default(PENDING_CONFIRMATION)
-
-  // Raw payload to keep everything
-  payload   Json
-
-  // Parsed fields (optional but helpful for viewing)
-  name      String?
-  phone     String?
-  email     String?
-  company   String?
-
-  // Token used for confirmation action (global uniqueness is ok)
-  confirmToken String @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  decision  InboundDecision?
-
-  @@index([tenantId, status])
-  @@index([tenantId, source])
-  @@index([createdAt])
-}
-
-model InboundDecision {
-  id        String   @id @default(cuid())
-  inboundId String   @unique
-  inbound   InboundItem @relation(fields: [inboundId], references: [id], onDelete: Cascade)
-
-  action    InboundDecisionAction // IMPORTED or JUNK only
-
-  decidedBy   String?
-  decidedUser User? @relation("InboundDecider", fields: [decidedBy], references: [id], onDelete: SetNull)
-
-  decidedAt DateTime @default(now())
-  note      String?
-
-  @@index([decidedBy])
-  @@index([decidedAt])
-}
-
-model SmartTriggerFlow {
-  id          String             @id @default(cuid())
-  tenantId    String
-  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  status      SmartTriggerStatus @default(DRAFT)
-  steps       Json
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-
-  @@index([tenantId, status])
-  @@index([tenantId, updatedAt])
 }
