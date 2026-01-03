@@ -8,12 +8,26 @@ if (!MASTER_KEY) {
   throw new Error("ENCRYPTION_MASTER_KEY is required");
 }
 
+function parseMasterKey(value: string, keyId: string): Buffer {
+  const decoded = Buffer.from(value, "base64");
+  if (decoded.length === 32) {
+    return decoded;
+  }
+  const utf8 = Buffer.from(value, "utf8");
+  if (utf8.length === 32) {
+    return utf8;
+  }
+  throw new Error(
+    `ENCRYPTION_MASTER_KEY for ${keyId} must be 32 bytes (base64 or 32-char string). Got ${decoded.length} bytes.`
+  );
+}
+
 const masterKeys = new Map<string, Buffer>();
-masterKeys.set(MASTER_KEY_ID, Buffer.from(MASTER_KEY, "base64"));
+masterKeys.set(MASTER_KEY_ID, parseMasterKey(MASTER_KEY, MASTER_KEY_ID));
 FALLBACK_KEYS.forEach((entry) => {
   const [keyId, keyValue] = entry.split(":");
   if (!keyId || !keyValue) return;
-  masterKeys.set(keyId, Buffer.from(keyValue, "base64"));
+  masterKeys.set(keyId, parseMasterKey(keyValue, keyId));
 });
 
 function getMasterKey(keyId: string): Buffer {
