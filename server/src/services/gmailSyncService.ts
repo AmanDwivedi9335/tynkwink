@@ -71,13 +71,18 @@ export async function syncGmailIntegration(integrationId: string) {
     const query = buildQuery(lastSyncAt);
 
     let pageToken: string | undefined;
-    let processed = 0;
+    let checkedCount = 0;
+    let matchedCount = 0;
     const activeRules = integration.rules.filter((rule) => rule.isActive);
 
     const parsedRules = activeRules.map((rule) => ({
       id: rule.id,
+      name: rule.name,
       condition: gmailRuleSchema.parse(rule.conditionsJson) as GmailRuleCondition,
     }));
+    const matchedRuleCounts = new Map(
+      parsedRules.map((rule) => [rule.id, { ruleId: rule.id, ruleName: rule.name, matchedCount: 0 }])
+    );
 
     do {
       const { messages, nextPageToken } = await listMessages({
@@ -93,11 +98,19 @@ export async function syncGmailIntegration(integrationId: string) {
           scopes,
           messageId: messageSummary.id,
         });
+        checkedCount += 1;
         const parsed = buildParsedEmail(message);
-        const matched = parsedRules.some((rule) => matchesRule(rule.condition, parsed));
-        if (!matched) {
+        const matchedRules = parsedRules.filter((rule) => matchesRule(rule.condition, parsed));
+        if (matchedRules.length === 0) {
           continue;
         }
+        matchedCount += 1;
+        matchedRules.forEach((rule) => {
+          const entry = matchedRuleCounts.get(rule.id);
+          if (entry) {
+            entry.matchedCount += 1;
+          }
+        });
 
         await prisma.leadInbox.upsert({
           where: { integrationId_gmailMessageId: { integrationId, gmailMessageId: message.id } },
@@ -117,15 +130,21 @@ export async function syncGmailIntegration(integrationId: string) {
             detectedAssigneeHint: null,
           },
         });
-        processed += 1;
       }
       pageToken = nextPageToken;
     } while (pageToken);
+
+    const matchedRulesSummary = Array.from(matchedRuleCounts.values()).filter(
+      (rule) => rule.matchedCount > 0
+    );
 
     await prisma.gmailSyncState.upsert({
       where: { integrationId },
       update: {
         lastSyncAt: new Date(),
+        lastCheckedCount: checkedCount,
+        lastMatchedCount: matchedCount,
+        lastMatchedRulesJson: matchedRulesSummary,
         errorCount: 0,
         lastError: null,
         backoffUntil: null,
@@ -133,6 +152,9 @@ export async function syncGmailIntegration(integrationId: string) {
       create: {
         integrationId,
         lastSyncAt: new Date(),
+        lastCheckedCount: checkedCount,
+        lastMatchedCount: matchedCount,
+        lastMatchedRulesJson: matchedRulesSummary,
         errorCount: 0,
       },
     });
@@ -143,10 +165,10 @@ export async function syncGmailIntegration(integrationId: string) {
       actionType: "GMAIL_SYNC",
       entityType: "GmailIntegration",
       entityId: integration.id,
-      meta: { processed },
+      meta: { checkedCount, matchedCount, matchedRules: matchedRulesSummary },
     });
 
-    return { processed };
+    return { checkedCount, matchedCount };
   } catch (error: any) {
     const nextErrorCount = (integration.syncState?.errorCount ?? 0) + 1;
     const backoffMinutes = Math.min(60, Math.pow(2, nextErrorCount));
