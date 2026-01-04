@@ -221,6 +221,11 @@ router.post("/indiamart/pull", requireAuth, async (req, res) => {
   }
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      return res
+        .status(502)
+        .json({ message: "IndiaMART authentication failed", status: response.status });
+    }
     return res.status(response.status).json({ message: "IndiaMART API error", status: response.status });
   }
 
@@ -247,6 +252,9 @@ router.post("/indiamart/pull", requireAuth, async (req, res) => {
           },
           message,
         });
+      }
+      if (code === 401 || code === 403) {
+        return res.status(502).json({ message, code });
       }
       return res.status(code ?? 400).json({ message, code });
     }
