@@ -19,6 +19,7 @@ model Tenant {
   gmailIntegrations GmailIntegration[]
   gmailAccess       GmailIntegrationAccess[]
   gmailRules        GmailRule[]
+  auditLogs         AuditLog[]
   leadInbox         LeadInbox[]
   leads             Lead[]
   stages            LeadStage[]
@@ -53,6 +54,7 @@ model User {
   assignedLeads    Lead[]            @relation("LeadAssignee")
   gmailIntegrations GmailIntegration[]     @relation("GmailIntegrationCreator")
   gmailAccess       GmailIntegrationAccess[]
+  auditLogs        AuditLog[]
   refreshTokens    RefreshToken[]
   memberships      TenantUser[]
 
@@ -283,6 +285,23 @@ model LeadApprovalToken {
 
   @@index([tenantId, leadInboxId])
   @@index([expiresAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  actorUserId String?
+  actionType  String
+  entityType  String
+  entityId    String?
+  metaJson    Json?
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([actorUserId])
+  @@index([tenantId, createdAt])
 }
 
 enum UserRole {
