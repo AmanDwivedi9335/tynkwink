@@ -787,9 +787,17 @@ router.post(
     }
 
     const jobs = await gmailSyncQueue.getJobs(["active", "waiting", "delayed"]);
+    const jobIds = Array.from(
+      new Set(
+        jobs
+          .map((job) => job.id)
+          .filter((id): id is string | number => id !== undefined && id !== null)
+          .map((id) => String(id))
+      )
+    );
 
-    await Promise.all(jobs.map((job) => job.remove()));
-    return res.json({ ok: true, removed: jobs.length });
+    await Promise.all(jobIds.map((jobId) => gmailSyncQueue.removeJobs(jobId)));
+    return res.json({ ok: true, removed: jobIds.length });
   }
 );
 

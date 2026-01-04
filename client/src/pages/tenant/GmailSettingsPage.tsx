@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -91,6 +91,7 @@ export default function GmailSettingsPage() {
   const [pendingLoading, setPendingLoading] = useState(false);
   const [queuedSyncAtByIntegration, setQueuedSyncAtByIntegration] = useState<Record<string, string>>({});
   const [queueStatus, setQueueStatus] = useState<GmailQueueSnapshot | null>(null);
+  const lastQueueTotalRef = useRef(0);
 
   const formatSyncAt = (value?: string | null, queuedAt?: string | null) => {
     if (value) {
@@ -171,20 +172,27 @@ export default function GmailSettingsPage() {
     window.history.replaceState({}, document.title, window.location.pathname);
   }, []);
 
-  useEffect(() => {
-    if (!tenantId) return;
-    api
-      .get(`/api/tenants/${tenantId}/integrations/gmail`)
-      .then((response) => {
-        const activeIntegrations = (response.data.integrations ?? []).filter(
-          (integration: GmailIntegration) => integration.status !== "REVOKED"
-        );
-        setIntegrations(activeIntegrations);
+  const loadIntegrations = useCallback(
+    async ({ preserveSelection = false } = {}) => {
+      if (!tenantId) return [];
+      const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
+      const activeIntegrations = (response.data.integrations ?? []).filter(
+        (integration: GmailIntegration) => integration.status !== "REVOKED"
+      );
+      setIntegrations(activeIntegrations);
+      if (!preserveSelection) {
         const first = activeIntegrations[0];
         if (first) setSelectedIntegration(first.id);
-      })
-      .catch(() => setError("Unable to load Gmail integrations."));
-  }, [tenantId]);
+      }
+      return activeIntegrations;
+    },
+    [tenantId]
+  );
+
+  useEffect(() => {
+    if (!tenantId) return;
+    loadIntegrations().catch(() => setError("Unable to load Gmail integrations."));
+  }, [loadIntegrations, tenantId]);
 
   const refreshPendingCount = async () => {
     if (!tenantId) return;
@@ -194,6 +202,7 @@ export default function GmailSettingsPage() {
         params: { status: "PENDING" },
       });
       setPendingCount(response.data.inbox?.length ?? 0);
+      await loadIntegrations({ preserveSelection: true });
     } catch {
       setError("Unable to load pending Gmail leads.");
     } finally {
@@ -224,7 +233,7 @@ export default function GmailSettingsPage() {
   useEffect(() => {
     if (!tenantId) return;
     void refreshPendingCount();
-  }, [tenantId]);
+  }, [loadIntegrations, tenantId]);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -232,8 +241,16 @@ export default function GmailSettingsPage() {
     const fetchQueueStatus = async () => {
       try {
         const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail/queue`);
+        const nextQueue = response.data.queue ?? null;
         if (!cancelled) {
-          setQueueStatus(response.data.queue ?? null);
+          setQueueStatus(nextQueue);
+          const queueTotal = (nextQueue?.counts?.active ?? 0) + (nextQueue?.counts?.waiting ?? 0);
+          const shouldRefresh =
+            queueTotal > 0 || (lastQueueTotalRef.current > 0 && queueTotal === 0);
+          lastQueueTotalRef.current = queueTotal;
+          if (shouldRefresh) {
+            await loadIntegrations({ preserveSelection: true });
+          }
         }
       } catch {
         if (!cancelled) {
@@ -253,11 +270,18 @@ export default function GmailSettingsPage() {
     if (!tenantId) return;
     try {
       const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail/queue`);
-      setQueueStatus(response.data.queue ?? null);
+      const nextQueue = response.data.queue ?? null;
+      setQueueStatus(nextQueue);
+      const queueTotal = (nextQueue?.counts?.active ?? 0) + (nextQueue?.counts?.waiting ?? 0);
+      const shouldRefresh = queueTotal > 0 || (lastQueueTotalRef.current > 0 && queueTotal === 0);
+      lastQueueTotalRef.current = queueTotal;
+      if (shouldRefresh) {
+        await loadIntegrations({ preserveSelection: true });
+      }
     } catch {
       setQueueStatus(null);
     }
-  }, [tenantId]);
+  }, [loadIntegrations, tenantId]);
 
   useEffect(() => {
     setQueuedSyncAtByIntegration((prev) => {
@@ -305,11 +329,7 @@ export default function GmailSettingsPage() {
     setError(null);
     try {
       await api.post(`/api/tenants/${tenantId}/integrations/gmail/${integrationId}/disconnect`);
-      const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
-      const activeIntegrations = (response.data.integrations ?? []).filter(
-        (integration: GmailIntegration) => integration.status !== "REVOKED"
-      );
-      setIntegrations(activeIntegrations);
+      const activeIntegrations = await loadIntegrations();
       if (selectedIntegration === integrationId) {
         const next = activeIntegrations[0]?.id ?? "";
         setSelectedIntegration(next);
@@ -345,11 +365,6 @@ export default function GmailSettingsPage() {
         [integrationId]: prev[integrationId] ?? new Date().toISOString(),
       }));
       await refreshPendingCount();
-      const integrationsResponse = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
-      const activeIntegrations = (integrationsResponse.data.integrations ?? []).filter(
-        (integration: GmailIntegration) => integration.status !== "REVOKED"
-      );
-      setIntegrations(activeIntegrations);
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Unable to sync Gmail right now.");
     } finally {
