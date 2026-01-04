@@ -179,7 +179,12 @@ router.post("/indiamart/pull", requireAuth, async (req, res) => {
   const now = new Date();
   const { startTime, endTime, lookbackHours } = parsed.data;
 
-  const url = new URL(baseUrl);
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return res.status(400).json({ message: "Invalid IndiaMART base URL" });
+  }
   url.searchParams.set("glusr_crm_key", crmKey);
 
   if ((startTime && !endTime) || (!startTime && endTime)) {
@@ -208,12 +213,28 @@ router.post("/indiamart/pull", requireAuth, async (req, res) => {
     url.searchParams.set("end_time", resolvedEndTime);
   }
 
-  const response = await fetch(url.toString());
+  let response: Response;
+  try {
+    response = await fetch(url.toString());
+  } catch {
+    return res.status(502).json({ message: "Unable to reach IndiaMART API" });
+  }
+
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      return res
+        .status(502)
+        .json({ message: "IndiaMART authentication failed", status: response.status });
+    }
     return res.status(response.status).json({ message: "IndiaMART API error", status: response.status });
   }
 
-  const data = (await response.json()) as unknown;
+  let data: unknown;
+  try {
+    data = (await response.json()) as unknown;
+  } catch {
+    return res.status(502).json({ message: "Invalid response from IndiaMART API" });
+  }
   if (data && typeof data === "object") {
     const record = data as Record<string, unknown>;
     const status = record.STATUS;
@@ -231,6 +252,9 @@ router.post("/indiamart/pull", requireAuth, async (req, res) => {
           },
           message,
         });
+      }
+      if (code === 401 || code === 403) {
+        return res.status(502).json({ message, code });
       }
       return res.status(code ?? 400).json({ message, code });
     }
