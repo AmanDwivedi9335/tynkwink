@@ -29,6 +29,10 @@ const startSchema = z.object({
   redirectUri: z.string().trim().optional(),
 });
 
+const forceStopQueueSchema = z.object({
+  jobId: z.string().trim().min(1),
+});
+
 const allowedRedirectOrigins = (() => {
   const configured = (process.env.PUBLIC_BASE_URL ?? "")
     .split(",")
@@ -660,7 +664,109 @@ router.get("/tenants/:tenantId/integrations/gmail/queue", requireAuth, requireTe
   }
 
   const counts = await gmailSyncQueue.getJobCounts("waiting", "active", "delayed", "completed", "failed");
-  return res.json({ queue: counts });
+  const [activeJobs, waitingJobs, delayedJobs] = await Promise.all([
+    gmailSyncQueue.getJobs(["active"]),
+    gmailSyncQueue.getJobs(["waiting"]),
+    gmailSyncQueue.getJobs(["delayed"]),
+  ]);
+
+  const summarizeJob = (
+    job: Awaited<ReturnType<typeof gmailSyncQueue.getJobs>>[number],
+    status: "active" | "waiting" | "delayed"
+  ) => ({
+    id: String(job.id ?? ""),
+    integrationId: (job.data as { integrationId?: string } | null)?.integrationId ?? null,
+    queueName: gmailSyncQueue.name,
+    status,
+    queuedAt: job.timestamp ? new Date(job.timestamp).toISOString() : null,
+    startedAt: job.processedOn ? new Date(job.processedOn).toISOString() : null,
+    attemptsMade: job.attemptsMade ?? 0,
+  });
+
+  const activeSummaries = activeJobs.map((job) => summarizeJob(job, "active"));
+  const waitingSummaries = waitingJobs.map((job) => summarizeJob(job, "waiting"));
+  const delayedSummaries = delayedJobs.map((job) => summarizeJob(job, "delayed"));
+  const integrationIds = Array.from(
+    new Set(
+      [...activeSummaries, ...waitingSummaries, ...delayedSummaries]
+        .map((job) => job.integrationId)
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  let integrationLookup = new Map<string, string>();
+  if (integrationIds.length) {
+    const models = resolveGmailModels(res, {
+      allowMissing: true,
+      onMissing: () => {},
+    });
+    if (models) {
+      try {
+        const integrations = await models.gmailIntegration.findMany({
+          where: { tenantId, id: { in: integrationIds } },
+          select: { id: true, gmailAddress: true },
+        });
+        integrationLookup = new Map(integrations.map((integration) => [integration.id, integration.gmailAddress]));
+      } catch (error) {
+        if (respondToMissingGmailTables(res, error)) return;
+        throw error;
+      }
+    }
+  }
+
+  const attachIntegration = (job: ReturnType<typeof summarizeJob>) => ({
+    ...job,
+    gmailAddress: job.integrationId ? integrationLookup.get(job.integrationId) ?? null : null,
+  });
+
+  const now = Date.now();
+  const stuckThresholdMs = 15 * 60 * 1000;
+  const stuckJobs = activeSummaries
+    .map(attachIntegration)
+    .filter((job) => {
+      const startedAt = job.startedAt ? new Date(job.startedAt).getTime() : null;
+      if (!startedAt || Number.isNaN(startedAt)) return false;
+      return now - startedAt > stuckThresholdMs;
+    });
+
+  return res.json({
+    queue: {
+      counts,
+      jobs: {
+        active: activeSummaries.map(attachIntegration),
+        waiting: waitingSummaries.map(attachIntegration),
+        delayed: delayedSummaries.map(attachIntegration),
+      },
+      stuckJobs,
+    },
+  });
+});
+
+router.post("/tenants/:tenantId/integrations/gmail/queue/stop", requireAuth, requireTenantContext, async (req, res) => {
+  const tenantId = req.params.tenantId;
+  const userId = req.auth?.sub;
+  const role = req.auth?.role;
+  if (!userId || !role) return res.status(401).json({ message: "Unauthenticated" });
+  if (tenantId !== req.auth?.tenantId) {
+    return res.status(403).json({ message: "Tenant mismatch" });
+  }
+
+  if (!(await canManageIntegrations({ tenantId, userId, role }))) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const parsed = forceStopQueueSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
+  }
+
+  const job = await gmailSyncQueue.getJob(parsed.data.jobId);
+  if (!job) {
+    return res.status(404).json({ message: "Sync job not found" });
+  }
+
+  await gmailSyncQueue.removeJobs(parsed.data.jobId);
+  return res.json({ ok: true });
 });
 
 router.post(
