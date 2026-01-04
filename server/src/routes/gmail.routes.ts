@@ -770,6 +770,30 @@ router.post("/tenants/:tenantId/integrations/gmail/queue/stop", requireAuth, req
 });
 
 router.post(
+  "/tenants/:tenantId/integrations/gmail/queue/stop-all",
+  requireAuth,
+  requireTenantContext,
+  async (req, res) => {
+    const tenantId = req.params.tenantId;
+    const userId = req.auth?.sub;
+    const role = req.auth?.role;
+    if (!userId || !role) return res.status(401).json({ message: "Unauthenticated" });
+    if (tenantId !== req.auth?.tenantId) {
+      return res.status(403).json({ message: "Tenant mismatch" });
+    }
+
+    if (!(await canManageIntegrations({ tenantId, userId, role }))) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const jobs = await gmailSyncQueue.getJobs(["active", "waiting", "delayed"]);
+
+    await Promise.all(jobs.map((job) => job.remove()));
+    return res.json({ ok: true, removed: jobs.length });
+  }
+);
+
+router.post(
   "/tenants/:tenantId/integrations/gmail/:integrationId/rules",
   requireAuth,
   requireTenantContext,
