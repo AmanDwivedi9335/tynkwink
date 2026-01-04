@@ -41,6 +41,8 @@ export default function GmailSettingsPage() {
   const [ruleLabel, setRuleLabel] = useState("");
   const [ruleHasAttachments, setRuleHasAttachments] = useState("any");
   const [ruleUnreadOnly, setRuleUnreadOnly] = useState("any");
+  const [ruleIsActive, setRuleIsActive] = useState("active");
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connectAlert, setConnectAlert] = useState<{ severity: "success" | "error"; title: string; detail?: string } | null>(
     null
@@ -241,9 +243,9 @@ export default function GmailSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post(`/api/tenants/${tenantId}/integrations/gmail/${selectedIntegration}/rules`, {
+      const payload = {
         name: ruleName,
-        isActive: true,
+        isActive: ruleIsActive === "active",
         conditions: {
           from: ruleFrom || undefined,
           subjectContains: ruleSubject || undefined,
@@ -252,7 +254,15 @@ export default function GmailSettingsPage() {
           hasAttachments: ruleHasAttachments === "any" ? undefined : ruleHasAttachments === "yes",
           unreadOnly: ruleUnreadOnly === "any" ? undefined : ruleUnreadOnly === "yes",
         },
-      });
+      };
+      if (editingRuleId) {
+        await api.patch(
+          `/api/tenants/${tenantId}/integrations/gmail/${selectedIntegration}/rules/${editingRuleId}`,
+          payload
+        );
+      } else {
+        await api.post(`/api/tenants/${tenantId}/integrations/gmail/${selectedIntegration}/rules`, payload);
+      }
       const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail/${selectedIntegration}/rules`);
       setRules(response.data.rules ?? []);
       setRuleName("");
@@ -262,8 +272,63 @@ export default function GmailSettingsPage() {
       setRuleLabel("");
       setRuleHasAttachments("any");
       setRuleUnreadOnly("any");
+      setRuleIsActive("active");
+      setEditingRuleId(null);
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Unable to save rule.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditRule = (rule: GmailRule) => {
+    const conditions = (rule.conditionsJson ?? {}) as {
+      from?: string;
+      subjectContains?: string;
+      keywords?: string[];
+      label?: string;
+      hasAttachments?: boolean;
+      unreadOnly?: boolean;
+    };
+    setRuleName(rule.name);
+    setRuleFrom(conditions.from ?? "");
+    setRuleSubject(conditions.subjectContains ?? "");
+    setRuleKeywords(conditions.keywords?.join(", ") ?? "");
+    setRuleLabel(conditions.label ?? "");
+    setRuleHasAttachments(
+      typeof conditions.hasAttachments === "boolean" ? (conditions.hasAttachments ? "yes" : "no") : "any"
+    );
+    setRuleUnreadOnly(typeof conditions.unreadOnly === "boolean" ? (conditions.unreadOnly ? "yes" : "no") : "any");
+    setRuleIsActive(rule.isActive ? "active" : "inactive");
+    setEditingRuleId(rule.id);
+  };
+
+  const handleCancelEdit = () => {
+    setRuleName("");
+    setRuleFrom("");
+    setRuleSubject("");
+    setRuleKeywords("");
+    setRuleLabel("");
+    setRuleHasAttachments("any");
+    setRuleUnreadOnly("any");
+    setRuleIsActive("active");
+    setEditingRuleId(null);
+  };
+
+  const handleDeleteRule = async (ruleId: string) => {
+    if (!tenantId || !selectedIntegration) return;
+    if (!window.confirm("Delete this rule? This cannot be undone.")) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await api.delete(`/api/tenants/${tenantId}/integrations/gmail/${selectedIntegration}/rules/${ruleId}`);
+      const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail/${selectedIntegration}/rules`);
+      setRules(response.data.rules ?? []);
+      if (editingRuleId === ruleId) {
+        handleCancelEdit();
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "Unable to delete rule.");
     } finally {
       setLoading(false);
     }
@@ -430,20 +495,55 @@ export default function GmailSettingsPage() {
               <MenuItem value="yes">Yes</MenuItem>
               <MenuItem value="no">No</MenuItem>
             </TextField>
+            <TextField
+              select
+              label="Rule status"
+              value={ruleIsActive}
+              onChange={(event) => setRuleIsActive(event.target.value)}
+              fullWidth
+            >
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+            </TextField>
           </Stack>
-          <Button variant="contained" onClick={handleRuleSubmit} disabled={loading || !selectedIntegration}>
-            Save rule
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button variant="contained" onClick={handleRuleSubmit} disabled={loading || !selectedIntegration}>
+              {editingRuleId ? "Update rule" : "Save rule"}
+            </Button>
+            {editingRuleId ? (
+              <Button variant="text" onClick={handleCancelEdit} disabled={loading}>
+                Cancel edit
+              </Button>
+            ) : null}
+          </Stack>
         </Stack>
         <Divider sx={{ my: 3 }} />
         <Stack spacing={2}>
           {rules.map((rule) => (
             <Paper key={rule.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <Typography fontWeight={700}>{rule.name}</Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2}>
+                <Box>
+                  <Typography fontWeight={700}>{rule.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Version {rule.version} • {rule.isActive ? "Active" : "Inactive"}
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Button variant="outlined" size="small" onClick={() => handleEditRule(rule)} disabled={loading}>
+                    Edit
+                  </Button>
+                  <Button
+                    variant="text"
+                    color="error"
+                    size="small"
+                    onClick={() => handleDeleteRule(rule.id)}
+                    disabled={loading}
+                  >
+                    Delete
+                  </Button>
+                </Stack>
+              </Stack>
               <Typography variant="body2" color="text.secondary">
-                Version {rule.version} • {rule.isActive ? "Active" : "Inactive"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 Conditions: {JSON.stringify(rule.conditionsJson)}
               </Typography>
             </Paper>
