@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -36,12 +36,33 @@ type GmailRule = {
   version: number;
 };
 
-type GmailQueueStatus = {
+type GmailQueueCounts = {
   waiting: number;
   active: number;
   delayed: number;
   completed: number;
   failed: number;
+};
+
+type GmailQueueJob = {
+  id: string;
+  integrationId?: string | null;
+  gmailAddress?: string | null;
+  queueName: string;
+  status: "active" | "waiting" | "delayed";
+  queuedAt?: string | null;
+  startedAt?: string | null;
+  attemptsMade?: number;
+};
+
+type GmailQueueSnapshot = {
+  counts: GmailQueueCounts;
+  jobs: {
+    active: GmailQueueJob[];
+    waiting: GmailQueueJob[];
+    delayed: GmailQueueJob[];
+  };
+  stuckJobs: GmailQueueJob[];
 };
 
 export default function GmailSettingsPage() {
@@ -64,10 +85,11 @@ export default function GmailSettingsPage() {
   );
   const [syncAlert, setSyncAlert] = useState<{ severity: "success" | "info" | "error"; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [forceStopJobId, setForceStopJobId] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [queuedSyncAtByIntegration, setQueuedSyncAtByIntegration] = useState<Record<string, string>>({});
-  const [queueStatus, setQueueStatus] = useState<GmailQueueStatus | null>(null);
+  const [queueStatus, setQueueStatus] = useState<GmailQueueSnapshot | null>(null);
 
   const formatSyncAt = (value?: string | null, queuedAt?: string | null) => {
     if (value) {
@@ -80,6 +102,26 @@ export default function GmailSettingsPage() {
       return `Queued ${formatted}`;
     }
     return "Not yet";
+  };
+
+  const formatQueueTimestamp = (value?: string | null) => {
+    if (!value) return "Unknown";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  };
+
+  const formatQueueDuration = (value?: string | null) => {
+    if (!value) return "Unknown";
+    const timestamp = new Date(value).getTime();
+    if (Number.isNaN(timestamp)) return "Unknown";
+    const diffMs = Date.now() - timestamp;
+    if (diffMs < 0) return "Unknown";
+    const minutes = Math.floor(diffMs / 60000);
+    const seconds = Math.floor((diffMs % 60000) / 1000);
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
   };
 
   const selected = useMemo(() => integrations.find((integration) => integration.id === selectedIntegration), [
@@ -204,6 +246,16 @@ export default function GmailSettingsPage() {
       cancelled = true;
       window.clearInterval(interval);
     };
+  }, [tenantId]);
+
+  const refreshQueueStatus = useCallback(async () => {
+    if (!tenantId) return;
+    try {
+      const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail/queue`);
+      setQueueStatus(response.data.queue ?? null);
+    } catch {
+      setQueueStatus(null);
+    }
   }, [tenantId]);
 
   useEffect(() => {
@@ -404,6 +456,28 @@ export default function GmailSettingsPage() {
     }
   };
 
+  const handleForceStopQueue = async (jobId: string) => {
+    if (!tenantId) {
+      setError("Missing tenant context. Please refresh and select a tenant before managing the sync queue.");
+      return;
+    }
+    setForceStopJobId(jobId);
+    setError(null);
+    try {
+      await api.post(`/api/tenants/${tenantId}/integrations/gmail/queue/stop`, { jobId });
+      setSyncAlert({ severity: "info", message: "Sync job force-stopped. Refreshing queue status." });
+      await refreshQueueStatus();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "Unable to force stop the sync job.");
+    } finally {
+      setForceStopJobId(null);
+    }
+  };
+
+  const queueCounts = queueStatus?.counts;
+  const queueTotal = (queueCounts?.active ?? 0) + (queueCounts?.waiting ?? 0);
+  const stuckJobs = queueStatus?.stuckJobs ?? [];
+
   return (
     <Box sx={{ display: "grid", gap: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -449,19 +523,63 @@ export default function GmailSettingsPage() {
                 Sync queue activity
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {queueStatus.active + queueStatus.waiting} in queue
+                {queueTotal} in queue
               </Typography>
             </Stack>
             <LinearProgress
               sx={{ mt: 1, borderRadius: 999 }}
-              variant={queueStatus.active + queueStatus.waiting > 0 ? "indeterminate" : "determinate"}
-              value={queueStatus.active + queueStatus.waiting > 0 ? undefined : 100}
+              variant={queueTotal > 0 ? "indeterminate" : "determinate"}
+              value={queueTotal > 0 ? undefined : 100}
             />
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-              {queueStatus.active + queueStatus.waiting > 0
-                ? `${queueStatus.active} active · ${queueStatus.waiting} waiting`
+              {queueTotal > 0
+                ? `${queueCounts?.active ?? 0} active · ${queueCounts?.waiting ?? 0} waiting`
                 : "Queue idle"}
             </Typography>
+            {stuckJobs.length > 0 ? (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                {stuckJobs.length} sync queue {stuckJobs.length === 1 ? "is" : "are"} stuck. Review the details below and
+                force stop if needed.
+              </Alert>
+            ) : null}
+            {stuckJobs.length > 0 ? (
+              <Stack spacing={1.5} sx={{ mt: 2 }}>
+                {stuckJobs.map((job) => (
+                  <Paper
+                    key={job.id}
+                    variant="outlined"
+                    sx={{ p: 2, borderRadius: 2, display: "flex", justifyContent: "space-between", gap: 2 }}
+                  >
+                    <Box>
+                      <Typography fontWeight={600}>Queue: {job.queueName}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Account: {job.gmailAddress || job.integrationId || "Unknown"}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Status: {job.status}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Started: {formatQueueTimestamp(job.startedAt ?? job.queuedAt)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Running for: {formatQueueDuration(job.startedAt ?? job.queuedAt)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        onClick={() => handleForceStopQueue(job.id)}
+                        disabled={forceStopJobId === job.id}
+                      >
+                        Force stop
+                      </Button>
+                    </Box>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : null}
           </Box>
         ) : null}
         <Stack spacing={2} sx={{ mt: 2 }}>
