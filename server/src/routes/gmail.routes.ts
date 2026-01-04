@@ -765,7 +765,7 @@ router.post("/tenants/:tenantId/integrations/gmail/queue/stop", requireAuth, req
     return res.status(404).json({ message: "Sync job not found" });
   }
 
-  await gmailSyncQueue.removeJobs(parsed.data.jobId);
+  await gmailSyncQueue.remove(parsed.data.jobId);
   return res.json({ ok: true });
 });
 
@@ -796,7 +796,7 @@ router.post(
       )
     );
 
-    await Promise.all(jobIds.map((jobId) => gmailSyncQueue.removeJobs(jobId)));
+    await Promise.all(jobIds.map((jobId) => gmailSyncQueue.remove(jobId)));
     return res.json({ ok: true, removed: jobIds.length });
   }
 );
