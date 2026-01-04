@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Worker, QueueScheduler } from "bullmq";
+import { Worker } from "bullmq";
 import { gmailSyncQueue, leadImportQueue, digestQueue } from "./queues/queues";
 import { syncGmailIntegration } from "./services/gmailSyncService";
 import { importLeadFromInbox } from "./services/leadImportService";
@@ -12,10 +12,6 @@ const connection = {
 };
 
 export const startWorkers = () => {
-  new QueueScheduler("gmail-sync", { connection });
-  new QueueScheduler("lead-import", { connection });
-  new QueueScheduler("lead-digest", { connection });
-
   new Worker(
     "gmail-sync",
     async (job) => {
