@@ -18,7 +18,13 @@ type GmailIntegration = {
   id: string;
   gmailAddress: string;
   status: string;
-  syncState?: { lastSyncAt?: string | null; lastError?: string | null } | null;
+  syncState?: {
+    lastSyncAt?: string | null;
+    lastError?: string | null;
+    lastCheckedCount?: number | null;
+    lastMatchedCount?: number | null;
+    lastMatchedRulesJson?: { ruleId: string; ruleName: string; matchedCount: number }[] | null;
+  } | null;
 };
 
 type GmailRule = {
@@ -51,6 +57,12 @@ export default function GmailSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
+
+  const formatSyncAt = (value?: string | null) => {
+    if (!value) return "Not yet";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  };
 
   const selected = useMemo(() => integrations.find((integration) => integration.id === selectedIntegration), [
     integrations,
@@ -388,7 +400,19 @@ export default function GmailSettingsPage() {
                     Status: {integration.status}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Last sync: {integration.syncState?.lastSyncAt ?? "Not yet"}
+                    Last sync: {formatSyncAt(integration.syncState?.lastSyncAt)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Checked: {integration.syncState?.lastCheckedCount ?? 0} · Matched:{" "}
+                    {integration.syncState?.lastMatchedCount ?? 0}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Matches by rule:{" "}
+                    {integration.syncState?.lastMatchedRulesJson?.length
+                      ? integration.syncState.lastMatchedRulesJson
+                          .map((rule) => `${rule.ruleName} (${rule.matchedCount})`)
+                          .join(", ")
+                      : "None yet"}
                   </Typography>
                   {integration.syncState?.lastError ? (
                     <Typography variant="body2" color="error.main">

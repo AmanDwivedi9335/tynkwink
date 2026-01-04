@@ -211,13 +211,16 @@ model GmailIntegrationAccess {
 }
 
 model GmailSyncState {
-  integrationId String   @id
-  lastHistoryId String?
-  lastSyncAt    DateTime?
-  errorCount    Int      @default(0)
-  lastError     String?
-  backoffUntil  DateTime?
-  integration   GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  integrationId       String   @id
+  lastHistoryId       String?
+  lastSyncAt          DateTime?
+  lastCheckedCount    Int      @default(0)
+  lastMatchedCount    Int      @default(0)
+  lastMatchedRulesJson Json?
+  errorCount          Int      @default(0)
+  lastError           String?
+  backoffUntil        DateTime?
+  integration         GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
 
   @@index([lastSyncAt])
 }
