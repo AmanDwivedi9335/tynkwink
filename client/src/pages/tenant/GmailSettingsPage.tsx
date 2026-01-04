@@ -57,11 +57,19 @@ export default function GmailSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
+  const [queuedSyncAtByIntegration, setQueuedSyncAtByIntegration] = useState<Record<string, string>>({});
 
-  const formatSyncAt = (value?: string | null) => {
-    if (!value) return "Not yet";
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  const formatSyncAt = (value?: string | null, queuedAt?: string | null) => {
+    if (value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+    }
+    if (queuedAt) {
+      const date = new Date(queuedAt);
+      const formatted = Number.isNaN(date.getTime()) ? queuedAt : date.toLocaleString();
+      return `Queued ${formatted}`;
+    }
+    return "Not yet";
   };
 
   const selected = useMemo(() => integrations.find((integration) => integration.id === selectedIntegration), [
@@ -165,6 +173,19 @@ export default function GmailSettingsPage() {
     void refreshPendingCount();
   }, [tenantId]);
 
+  useEffect(() => {
+    setQueuedSyncAtByIntegration((prev) => {
+      if (!integrations.length) return {};
+      const next: Record<string, string> = {};
+      integrations.forEach((integration) => {
+        if (!integration.syncState?.lastSyncAt && prev[integration.id]) {
+          next[integration.id] = prev[integration.id];
+        }
+      });
+      return next;
+    });
+  }, [integrations]);
+
   const handleConnect = async () => {
     if (!tenantId) {
       setError("Missing tenant context. Please refresh and select a tenant before connecting Gmail.");
@@ -233,6 +254,10 @@ export default function GmailSettingsPage() {
       } else {
         setSyncAlert({ severity: "success", message: "Gmail sync queued. Refresh pending leads in a moment." });
       }
+      setQueuedSyncAtByIntegration((prev) => ({
+        ...prev,
+        [integrationId]: prev[integrationId] ?? new Date().toISOString(),
+      }));
       await refreshPendingCount();
       const integrationsResponse = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
       const activeIntegrations = (integrationsResponse.data.integrations ?? []).filter(
@@ -400,7 +425,11 @@ export default function GmailSettingsPage() {
                     Status: {integration.status}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Last sync: {formatSyncAt(integration.syncState?.lastSyncAt)}
+                    Last sync:{" "}
+                    {formatSyncAt(
+                      integration.syncState?.lastSyncAt,
+                      queuedSyncAtByIntegration[integration.id] ?? null
+                    )}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Checked: {integration.syncState?.lastCheckedCount ?? 0} · Matched:{" "}
