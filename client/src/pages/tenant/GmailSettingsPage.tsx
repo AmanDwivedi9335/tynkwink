@@ -101,8 +101,11 @@ export default function GmailSettingsPage() {
     api
       .get(`/api/tenants/${tenantId}/integrations/gmail`)
       .then((response) => {
-        setIntegrations(response.data.integrations ?? []);
-        const first = response.data.integrations?.[0];
+        const activeIntegrations = (response.data.integrations ?? []).filter(
+          (integration: GmailIntegration) => integration.status !== "REVOKED"
+        );
+        setIntegrations(activeIntegrations);
+        const first = activeIntegrations[0];
         if (first) setSelectedIntegration(first.id);
       })
       .catch(() => setError("Unable to load Gmail integrations."));
@@ -130,6 +133,18 @@ export default function GmailSettingsPage() {
       .then((response) => setRules(response.data.rules ?? []))
       .catch(() => setError("Unable to load Gmail rules."));
   }, [tenantId, selectedIntegration]);
+
+  useEffect(() => {
+    if (!selectedIntegration) {
+      setRules([]);
+      return;
+    }
+    const stillExists = integrations.some((integration) => integration.id === selectedIntegration);
+    if (!stillExists) {
+      const next = integrations[0]?.id ?? "";
+      setSelectedIntegration(next);
+    }
+  }, [integrations, selectedIntegration]);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -170,9 +185,12 @@ export default function GmailSettingsPage() {
     try {
       await api.post(`/api/tenants/${tenantId}/integrations/gmail/${integrationId}/disconnect`);
       const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
-      setIntegrations(response.data.integrations ?? []);
+      const activeIntegrations = (response.data.integrations ?? []).filter(
+        (integration: GmailIntegration) => integration.status !== "REVOKED"
+      );
+      setIntegrations(activeIntegrations);
       if (selectedIntegration === integrationId) {
-        const next = response.data.integrations?.[0]?.id ?? "";
+        const next = activeIntegrations[0]?.id ?? "";
         setSelectedIntegration(next);
       }
     } catch (err: any) {
@@ -203,7 +221,10 @@ export default function GmailSettingsPage() {
       }
       await refreshPendingCount();
       const integrationsResponse = await api.get(`/api/tenants/${tenantId}/integrations/gmail`);
-      setIntegrations(integrationsResponse.data.integrations ?? []);
+      const activeIntegrations = (integrationsResponse.data.integrations ?? []).filter(
+        (integration: GmailIntegration) => integration.status !== "REVOKED"
+      );
+      setIntegrations(activeIntegrations);
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Unable to sync Gmail right now.");
     } finally {
@@ -316,6 +337,7 @@ export default function GmailSettingsPage() {
                     variant="outlined"
                     size="small"
                     onClick={() => setSelectedIntegration(integration.id)}
+                    disabled={integration.status !== "ACTIVE"}
                   >
                     Manage Rules
                   </Button>
@@ -323,7 +345,7 @@ export default function GmailSettingsPage() {
                     variant="outlined"
                     size="small"
                     onClick={() => handleSyncNow(integration.id)}
-                    disabled={loading}
+                    disabled={loading || integration.status !== "ACTIVE"}
                   >
                     Check Mail
                   </Button>
