@@ -220,7 +220,7 @@ model GmailSyncState {
   lastMatchedCount    Int      @default(0)
   lastMatchedRulesJson Json?
   errorCount          Int      @default(0)
-  lastError           String?
+  lastError           String?  @db.Text
   backoffUntil        DateTime?
   integration         GmailIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
 
@@ -253,7 +253,7 @@ model LeadInbox {
   threadId             String?
   from                 String
   subject              String?
-  snippet              String?
+  snippet              String?        @db.Text
   receivedAt           DateTime
   rawHeadersJson       Json
   rawBodyText          String?        @db.Text
