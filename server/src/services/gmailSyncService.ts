@@ -5,6 +5,7 @@ import { safeTruncate } from "../security/encryption";
 import { writeAuditLog } from "../security/audit";
 
 const MAX_BODY_LENGTH = 4000;
+const MAX_SNIPPET_LENGTH = 191;
 
 function parseHeaders(headers: { name?: string; value?: string }[] | undefined) {
   const result: Record<string, string> = {};
@@ -122,7 +123,7 @@ export async function syncGmailIntegration(integrationId: string) {
             threadId: message.threadId ?? null,
             from: parsed.headers.from ?? "",
             subject: parsed.headers.subject ?? null,
-            snippet: message.snippet ?? null,
+            snippet: message.snippet ? safeTruncate(message.snippet, MAX_SNIPPET_LENGTH) : null,
             receivedAt: parsed.receivedAt,
             rawHeadersJson: parsed.headers,
             rawBodyText: parsed.bodyText,
