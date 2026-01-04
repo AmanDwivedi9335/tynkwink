@@ -86,6 +86,7 @@ export default function GmailSettingsPage() {
   const [syncAlert, setSyncAlert] = useState<{ severity: "success" | "info" | "error"; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [forceStopJobId, setForceStopJobId] = useState<string | null>(null);
+  const [forceStopAllLoading, setForceStopAllLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [queuedSyncAtByIntegration, setQueuedSyncAtByIntegration] = useState<Record<string, string>>({});
@@ -489,8 +490,36 @@ export default function GmailSettingsPage() {
     }
   };
 
+  const handleForceStopAllQueues = async () => {
+    if (!tenantId) {
+      setError("Missing tenant context. Please refresh and select a tenant before managing the sync queue.");
+      return;
+    }
+    if (!window.confirm("Force stop all Gmail sync jobs? This will cancel any queued or running syncs.")) {
+      return;
+    }
+    setForceStopAllLoading(true);
+    setError(null);
+    try {
+      const response = await api.post(`/api/tenants/${tenantId}/integrations/gmail/queue/stop-all`);
+      const removed = response.data?.removed ?? 0;
+      setSyncAlert({
+        severity: "info",
+        message:
+          removed > 0
+            ? `Force-stopped ${removed} sync job${removed === 1 ? "" : "s"}. Refreshing queue status.`
+            : "No active sync jobs were running.",
+      });
+      await refreshQueueStatus();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "Unable to force stop the sync queue.");
+    } finally {
+      setForceStopAllLoading(false);
+    }
+  };
+
   const queueCounts = queueStatus?.counts;
-  const queueTotal = (queueCounts?.active ?? 0) + (queueCounts?.waiting ?? 0);
+  const queueTotal = (queueCounts?.active ?? 0) + (queueCounts?.waiting ?? 0) + (queueCounts?.delayed ?? 0);
   const stuckJobs = queueStatus?.stuckJobs ?? [];
 
   return (
@@ -537,9 +566,20 @@ export default function GmailSettingsPage() {
               <Typography variant="body2" fontWeight={600}>
                 Sync queue activity
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {queueTotal} in queue
-              </Typography>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography variant="caption" color="text.secondary">
+                  {queueTotal} in queue
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  onClick={handleForceStopAllQueues}
+                  disabled={forceStopAllLoading || queueTotal === 0}
+                >
+                  Force stop all
+                </Button>
+              </Stack>
             </Stack>
             <LinearProgress
               sx={{ mt: 1, borderRadius: 999 }}
@@ -548,7 +588,9 @@ export default function GmailSettingsPage() {
             />
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
               {queueTotal > 0
-                ? `${queueCounts?.active ?? 0} active · ${queueCounts?.waiting ?? 0} waiting`
+                ? `${queueCounts?.active ?? 0} active · ${queueCounts?.waiting ?? 0} waiting · ${
+                    queueCounts?.delayed ?? 0
+                  } delayed`
                 : "Queue idle"}
             </Typography>
             {stuckJobs.length > 0 ? (
