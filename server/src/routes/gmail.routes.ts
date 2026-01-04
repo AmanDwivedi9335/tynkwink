@@ -646,6 +646,23 @@ router.get("/tenants/:tenantId/integrations/gmail", requireAuth, requireTenantCo
   return res.json({ integrations });
 });
 
+router.get("/tenants/:tenantId/integrations/gmail/queue", requireAuth, requireTenantContext, async (req, res) => {
+  const tenantId = req.params.tenantId;
+  const userId = req.auth?.sub;
+  const role = req.auth?.role;
+  if (!userId || !role) return res.status(401).json({ message: "Unauthenticated" });
+  if (tenantId !== req.auth?.tenantId) {
+    return res.status(403).json({ message: "Tenant mismatch" });
+  }
+
+  if (!(await canManageIntegrations({ tenantId, userId, role }))) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const counts = await gmailSyncQueue.getJobCounts("waiting", "active", "delayed", "completed", "failed");
+  return res.json({ queue: counts });
+});
+
 router.post(
   "/tenants/:tenantId/integrations/gmail/:integrationId/rules",
   requireAuth,

@@ -5,6 +5,7 @@ import {
   Button,
   Chip,
   Divider,
+  LinearProgress,
   MenuItem,
   Paper,
   Stack,
@@ -35,6 +36,14 @@ type GmailRule = {
   version: number;
 };
 
+type GmailQueueStatus = {
+  waiting: number;
+  active: number;
+  delayed: number;
+  completed: number;
+  failed: number;
+};
+
 export default function GmailSettingsPage() {
   const tenantId = useAppSelector((state) => state.auth.tenantId);
   const [integrations, setIntegrations] = useState<GmailIntegration[]>([]);
@@ -58,6 +67,7 @@ export default function GmailSettingsPage() {
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [queuedSyncAtByIntegration, setQueuedSyncAtByIntegration] = useState<Record<string, string>>({});
+  const [queueStatus, setQueueStatus] = useState<GmailQueueStatus | null>(null);
 
   const formatSyncAt = (value?: string | null, queuedAt?: string | null) => {
     if (value) {
@@ -171,6 +181,29 @@ export default function GmailSettingsPage() {
   useEffect(() => {
     if (!tenantId) return;
     void refreshPendingCount();
+  }, [tenantId]);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    let cancelled = false;
+    const fetchQueueStatus = async () => {
+      try {
+        const response = await api.get(`/api/tenants/${tenantId}/integrations/gmail/queue`);
+        if (!cancelled) {
+          setQueueStatus(response.data.queue ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setQueueStatus(null);
+        }
+      }
+    };
+    void fetchQueueStatus();
+    const interval = window.setInterval(fetchQueueStatus, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, [tenantId]);
 
   useEffect(() => {
@@ -409,6 +442,28 @@ export default function GmailSettingsPage() {
             Refresh pending
           </Button>
         </Stack>
+        {queueStatus ? (
+          <Box sx={{ mt: 2 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="body2" fontWeight={600}>
+                Sync queue activity
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {queueStatus.active + queueStatus.waiting} in queue
+              </Typography>
+            </Stack>
+            <LinearProgress
+              sx={{ mt: 1, borderRadius: 999 }}
+              variant={queueStatus.active + queueStatus.waiting > 0 ? "indeterminate" : "determinate"}
+              value={queueStatus.active + queueStatus.waiting > 0 ? undefined : 100}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+              {queueStatus.active + queueStatus.waiting > 0
+                ? `${queueStatus.active} active · ${queueStatus.waiting} waiting`
+                : "Queue idle"}
+            </Typography>
+          </Box>
+        ) : null}
         <Stack spacing={2} sx={{ mt: 2 }}>
           {integrations.length === 0 ? (
             <Typography color="text.secondary">No Gmail accounts connected yet.</Typography>
