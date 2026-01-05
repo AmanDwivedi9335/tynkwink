@@ -23,6 +23,15 @@ type LeadInboxItem = {
   snippet?: string | null;
   receivedAt: string;
   status: string;
+  leadPreview?: {
+    name: string;
+    email: string;
+    phone: string;
+    company: string;
+    notes: string;
+    preferredStage: string;
+    assigneeHint: string;
+  } | null;
 };
 
 export default function LeadInboxPage() {
@@ -74,9 +83,9 @@ export default function LeadInboxPage() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>From</TableCell>
-              <TableCell>Subject</TableCell>
-              <TableCell>Snippet</TableCell>
+              <TableCell>Lead</TableCell>
+              <TableCell>Contact</TableCell>
+              <TableCell>Notes</TableCell>
               <TableCell>Received</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Actions</TableCell>
@@ -85,9 +94,39 @@ export default function LeadInboxPage() {
           <TableBody>
             {items.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{item.from}</TableCell>
-                <TableCell>{item.subject ?? "-"}</TableCell>
-                <TableCell>{item.snippet ?? "-"}</TableCell>
+                <TableCell>
+                  <Stack spacing={0.5}>
+                    <Typography fontWeight={600}>
+                      {item.leadPreview?.name || item.from || "Unknown lead"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.leadPreview?.company || item.subject || "No company provided"}
+                    </Typography>
+                    {item.leadPreview?.preferredStage ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Preferred stage: {item.leadPreview.preferredStage}
+                      </Typography>
+                    ) : null}
+                  </Stack>
+                </TableCell>
+                <TableCell>
+                  <Stack spacing={0.5}>
+                    <Typography variant="body2">{item.leadPreview?.email || "-"}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.leadPreview?.phone || "-"}
+                    </Typography>
+                    {item.leadPreview?.assigneeHint ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Assignee: {item.leadPreview.assigneeHint}
+                      </Typography>
+                    ) : null}
+                  </Stack>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2">
+                    {item.leadPreview?.notes || item.snippet || "-"}
+                  </Typography>
+                </TableCell>
                 <TableCell>{new Date(item.receivedAt).toLocaleString()}</TableCell>
                 <TableCell>
                   <Chip label={item.status} size="small" />
