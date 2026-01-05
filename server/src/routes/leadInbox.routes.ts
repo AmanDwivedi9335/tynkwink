@@ -6,6 +6,7 @@ import { prisma } from "../prisma";
 import { handleLeadApproval } from "../services/approvalService";
 import { leadImportQueue } from "../queues/queues";
 import { checkRateLimit } from "../utils/rateLimit";
+import { normalizeLeadExtraction } from "../services/leadExtraction";
 
 const router = Router();
 
@@ -66,7 +67,34 @@ router.get("/tenants/:tenantId/lead-inbox", requireAuth, requireTenantContext, a
     orderBy: { receivedAt: "desc" },
   });
 
-  return res.json({ inbox });
+  const formattedInbox = inbox.map((lead) => {
+    const preview = normalizeLeadExtraction(lead.extractedPreviewJson);
+    const notes = [preview?.notes, preview?.requirement, preview?.location]
+      .filter(Boolean)
+      .join("\n");
+
+    return {
+      id: lead.id,
+      from: lead.from,
+      subject: lead.subject,
+      snippet: lead.snippet,
+      receivedAt: lead.receivedAt,
+      status: lead.status,
+      leadPreview: preview
+        ? {
+            name: preview.leadName ?? "",
+            email: preview.email ?? "",
+            phone: preview.phone ?? "",
+            company: preview.company ?? "",
+            notes,
+            preferredStage: preview.preferredStage ?? "",
+            assigneeHint: preview.assigneeHint ?? lead.detectedAssigneeHint ?? "",
+          }
+        : null,
+    };
+  });
+
+  return res.json({ inbox: formattedInbox });
 });
 
 router.post("/tenants/:tenantId/lead-inbox/:leadInboxId/approve", requireAuth, requireTenantContext, async (req, res) => {

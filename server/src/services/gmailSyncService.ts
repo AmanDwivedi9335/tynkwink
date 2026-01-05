@@ -3,6 +3,8 @@ import { listMessages, getMessage } from "../providers/gmail";
 import { matchesRule, GmailRuleCondition, ParsedEmail, gmailRuleSchema } from "./gmailRules";
 import { safeTruncate } from "../security/encryption";
 import { writeAuditLog } from "../security/audit";
+import { extractLeadPreviewWithKey } from "./leadExtraction";
+import crypto from "crypto";
 
 const MAX_BODY_LENGTH = 4000;
 const MAX_SNIPPET_LENGTH = 191;
@@ -70,6 +72,10 @@ export async function syncGmailIntegration(integrationId: string) {
     const scopes = integration.scopes.split(" ");
     const lastSyncAt = integration.syncState?.lastSyncAt;
     const query = buildQuery(lastSyncAt);
+    const tenantSettings = await prisma.tenantSettings.findUnique({
+      where: { tenantId: integration.tenantId },
+    });
+    const openAiKey = tenantSettings?.openaiEncryptedApiKey ?? null;
 
     let pageToken: string | undefined;
     let checkedCount = 0;
@@ -113,9 +119,26 @@ export async function syncGmailIntegration(integrationId: string) {
           }
         });
 
+        let extractedPreviewJson = null;
+        if (openAiKey) {
+          try {
+            extractedPreviewJson = await extractLeadPreviewWithKey({
+              encryptedApiKey: openAiKey,
+              from: parsed.headers.from ?? "",
+              subject: parsed.headers.subject ?? null,
+              bodyText: parsed.bodyText,
+              correlationId: crypto.randomUUID(),
+            });
+          } catch {
+            extractedPreviewJson = null;
+          }
+        }
+
+        const updateData = extractedPreviewJson ? { extractedPreviewJson } : {};
+
         await prisma.leadInbox.upsert({
           where: { integrationId_gmailMessageId: { integrationId, gmailMessageId: message.id } },
-          update: {},
+          update: updateData,
           create: {
             tenantId: integration.tenantId,
             integrationId,
@@ -129,6 +152,7 @@ export async function syncGmailIntegration(integrationId: string) {
             rawBodyText: parsed.bodyText,
             status: "PENDING",
             detectedAssigneeHint: null,
+            extractedPreviewJson: extractedPreviewJson ?? undefined,
           },
         });
       }

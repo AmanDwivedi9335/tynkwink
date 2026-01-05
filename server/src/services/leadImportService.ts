@@ -1,32 +1,8 @@
-import { z } from "zod";
 import { prisma } from "../prisma";
-import { extractLeadFromEmail } from "../providers/openai";
-import { safeTruncate } from "../security/encryption";
 import { writeAuditLog } from "../security/audit";
 import { buildLeadDedupeFilters } from "./leadDedupe";
 import { InboundSource } from "@prisma/client";
-
-const extractionSchema = z.object({
-  leadName: z.string().trim().optional(),
-  company: z.string().trim().optional(),
-  email: z.string().trim().email().optional(),
-  phone: z.string().trim().optional(),
-  requirement: z.string().trim().optional(),
-  location: z.string().trim().optional(),
-  notes: z.string().trim().optional(),
-  preferredStage: z.string().trim().optional(),
-  assigneeHint: z.string().trim().optional(),
-});
-
-function parseExtraction(content: string) {
-  const jsonStart = content.indexOf("{");
-  const jsonEnd = content.lastIndexOf("}");
-  if (jsonStart === -1 || jsonEnd === -1) {
-    throw new Error("OpenAI response did not contain JSON");
-  }
-  const raw = content.slice(jsonStart, jsonEnd + 1);
-  return extractionSchema.parse(JSON.parse(raw));
-}
+import { extractLeadPreview, normalizeLeadExtraction } from "./leadExtraction";
 
 async function resolveAssignee(tenantId: string, hint?: string | null, fallbackId?: string | null) {
   if (hint) {
@@ -57,22 +33,27 @@ export async function importLeadFromInbox(leadInboxId: string, correlationId: st
   const tenantSettings = await prisma.tenantSettings.findUnique({
     where: { tenantId: leadInbox.tenantId },
   });
-  if (!tenantSettings?.openaiEncryptedApiKey) {
-    throw new Error("OpenAI API key not configured for tenant");
+  const cachedExtraction = normalizeLeadExtraction(leadInbox.extractedPreviewJson);
+  let extracted = cachedExtraction;
+  if (!extracted) {
+    if (!tenantSettings?.openaiEncryptedApiKey) {
+      throw new Error("OpenAI API key not configured for tenant");
+    }
+
+    const preview = await extractLeadPreview({
+      tenantId: leadInbox.tenantId,
+      from: leadInbox.from,
+      subject: leadInbox.subject,
+      bodyText: leadInbox.rawBodyText,
+      correlationId,
+    });
+
+    if (!preview) {
+      throw new Error("OpenAI API key not configured for tenant");
+    }
+
+    extracted = preview;
   }
-
-  const prompt = `Extract lead data from the email below.\n\nFrom: ${leadInbox.from}\nSubject: ${leadInbox.subject ?? ""}\nBody:\n${safeTruncate(
-    leadInbox.rawBodyText ?? "",
-    3000
-  )}`;
-
-  const response = await extractLeadFromEmail({
-    encryptedApiKey: tenantSettings.openaiEncryptedApiKey,
-    content: prompt,
-    correlationId,
-  });
-
-  const extracted = parseExtraction(response);
 
   const assigneeId = await resolveAssignee(
     leadInbox.tenantId,
