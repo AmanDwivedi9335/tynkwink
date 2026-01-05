@@ -61,6 +61,8 @@ export default function ApprovalSettingsPage() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [staffLoading, setStaffLoading] = useState(false);
   const [settingsData, setSettingsData] = useState<TenantSettings | null>(null);
+  const [openAiTestStatus, setOpenAiTestStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const [openAiTestMessage, setOpenAiTestMessage] = useState<string | null>(null);
   const [staff, setStaff] = useState<StaffMember[]>([]);
 
   const timezoneOptions = useMemo(() => {
@@ -142,6 +144,35 @@ export default function ApprovalSettingsPage() {
   }, [tenantId]);
 
   useEffect(() => {
+    if (!tenantId) return;
+    if (!settingsData?.openaiEncryptedApiKey) {
+      setOpenAiTestStatus("idle");
+      setOpenAiTestMessage(null);
+      return;
+    }
+
+    let isMounted = true;
+    setOpenAiTestStatus("checking");
+    setOpenAiTestMessage(null);
+
+    api
+      .post(`/api/tenants/${tenantId}/settings/openai/test`)
+      .then(() => {
+        if (!isMounted) return;
+        setOpenAiTestStatus("valid");
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setOpenAiTestStatus("invalid");
+        setOpenAiTestMessage(err?.response?.data?.message ?? "OpenAI key verification failed.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [settingsData?.openaiEncryptedApiKey, tenantId]);
+
+  useEffect(() => {
     if (!defaultOwnerId) return;
     if (defaultOwnerInput !== defaultOwnerId) return;
     const option = staffOptions.find((member) => member.id === defaultOwnerId);
@@ -155,12 +186,13 @@ export default function ApprovalSettingsPage() {
     setStatus(null);
     setError(null);
     try {
-      await api.patch(`/api/tenants/${tenantId}/settings`, {
+      const response = await api.patch(`/api/tenants/${tenantId}/settings`, {
         approvalDigestFrequencyMinutes: Number(frequency),
         defaultLeadOwnerUserId: defaultOwnerId || null,
         openaiApiKey: openaiKey || undefined,
         timezone,
       });
+      setSettingsData(response.data.settings ?? null);
       setOpenaiKey("");
       setStatus("Settings saved.");
     } catch (err: any) {
@@ -169,6 +201,24 @@ export default function ApprovalSettingsPage() {
   };
 
   const openAiConfigured = Boolean(settingsData?.openaiEncryptedApiKey);
+  const openAiStatusLabel = !openAiConfigured
+    ? "Not configured"
+    : openAiTestStatus === "checking"
+    ? "Checking..."
+    : openAiTestStatus === "valid"
+    ? "Configured (verified)"
+    : openAiTestStatus === "invalid"
+    ? "Configured (failed)"
+    : "Configured";
+  const openAiStatusColor = !openAiConfigured
+    ? "default"
+    : openAiTestStatus === "valid"
+    ? "success"
+    : openAiTestStatus === "invalid"
+    ? "error"
+    : openAiTestStatus === "checking"
+    ? "info"
+    : "warning";
   const saveDisabled = settingsLoading || staffLoading;
 
   return (
@@ -241,12 +291,17 @@ export default function ApprovalSettingsPage() {
               OpenAI key status:
             </Typography>
             <Chip
-              label={openAiConfigured ? "Configured" : "Not configured"}
-              color={openAiConfigured ? "success" : "default"}
+              label={openAiStatusLabel}
+              color={openAiStatusColor}
               size="small"
               variant={openAiConfigured ? "filled" : "outlined"}
             />
           </Stack>
+          {openAiTestStatus === "invalid" && openAiTestMessage ? (
+            <Typography variant="caption" color="error">
+              {openAiTestMessage}
+            </Typography>
+          ) : null}
           <TextField
             select
             label="Timezone"
