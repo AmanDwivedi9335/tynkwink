@@ -5,6 +5,7 @@ import { requireTenantContext } from "../middleware/rbac";
 import { prisma } from "../prisma";
 import { encryptSecret } from "../security/encryption";
 import { writeAuditLog } from "../security/audit";
+import { verifyOpenAiKey } from "../providers/openai";
 import crypto from "crypto";
 
 const router = Router();
@@ -74,6 +75,30 @@ router.patch("/tenants/:tenantId/settings", requireAuth, requireTenantContext, a
   });
 
   return res.json({ settings: { ...settings, openaiEncryptedApiKey: settings.openaiEncryptedApiKey ? "***" : null } });
+});
+
+router.post("/tenants/:tenantId/settings/openai/test", requireAuth, requireTenantContext, async (req, res) => {
+  const tenantId = req.params.tenantId;
+  if (tenantId !== req.auth?.tenantId) {
+    return res.status(403).json({ message: "Tenant mismatch" });
+  }
+
+  const settings = await prisma.tenantSettings.findUnique({
+    where: { tenantId },
+    select: { openaiEncryptedApiKey: true },
+  });
+
+  if (!settings?.openaiEncryptedApiKey) {
+    return res.status(400).json({ message: "OpenAI API key not configured for tenant" });
+  }
+
+  const correlationId = crypto.randomUUID();
+  try {
+    await verifyOpenAiKey({ encryptedApiKey: settings.openaiEncryptedApiKey, correlationId });
+    return res.json({ ok: true });
+  } catch (error: any) {
+    return res.status(502).json({ ok: false, message: error?.message ?? "Unable to verify OpenAI key." });
+  }
 });
 
 router.post("/tenants/:tenantId/integrations/gmail/access", requireAuth, requireTenantContext, async (req, res) => {

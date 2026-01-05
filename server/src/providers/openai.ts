@@ -59,3 +59,35 @@ export async function extractLeadFromEmail(params: {
 
   return content as string;
 }
+
+export async function verifyOpenAiKey(params: { encryptedApiKey: string; correlationId: string }) {
+  const apiKey = decryptSecret(params.encryptedApiKey);
+  const body = {
+    model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+    temperature: 0,
+    max_tokens: 1,
+    messages: [
+      {
+        role: "user",
+        content: "ping",
+      },
+    ],
+  };
+
+  const response = await fetch(OPENAI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "X-Correlation-Id": params.correlationId,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI error ${response.status}: ${safeTruncate(errorText, 500)}`);
+  }
+
+  return true;
+}
