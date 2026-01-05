@@ -5,6 +5,7 @@ import { requireTenantContext } from "../middleware/rbac";
 import { prisma } from "../prisma";
 import { encryptSecret } from "../security/encryption";
 import { writeAuditLog } from "../security/audit";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -57,6 +58,7 @@ router.patch("/tenants/:tenantId/settings", requireAuth, requireTenantContext, a
     },
     create: {
       tenantId,
+      inboundSecret: crypto.randomBytes(24).toString("hex"),
       approvalDigestFrequencyMinutes: parsed.data.approvalDigestFrequencyMinutes ?? 60,
       defaultLeadOwnerUserId: parsed.data.defaultLeadOwnerUserId ?? null,
       openaiEncryptedApiKey: encryptedKey ?? null,
