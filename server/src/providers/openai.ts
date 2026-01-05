@@ -12,7 +12,27 @@ export type OpenAiExtractedLead = {
   assigneeHint?: string;
 };
 
-const OPENAI_ENDPOINT = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1/chat/completions";
+const DEFAULT_OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+
+function buildOpenAiEndpoint() {
+  const baseUrl = process.env.OPENAI_BASE_URL?.trim();
+  if (!baseUrl) {
+    return DEFAULT_OPENAI_ENDPOINT;
+  }
+
+  if (baseUrl.includes("/chat/completions") || baseUrl.includes("/responses")) {
+    return baseUrl;
+  }
+
+  const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  if (normalizedBase.endsWith("/v1")) {
+    return `${normalizedBase}/chat/completions`;
+  }
+
+  return `${normalizedBase}/v1/chat/completions`;
+}
+
+const OPENAI_ENDPOINT = buildOpenAiEndpoint();
 
 export async function extractLeadFromEmail(params: {
   encryptedApiKey: string;
