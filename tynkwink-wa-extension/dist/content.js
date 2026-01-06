@@ -105,42 +105,162 @@ function mountOverlay(opts) {
         background: #151515;
         border-left: 1px solid rgba(255,255,255,0.08);
         color: #e9f2ff;
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+      }
+      .tw-wa-panel-tabs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        background: #101214;
+      }
+      .tw-wa-tab {
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9aa7b6;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        position: relative;
+      }
+      .tw-wa-tab svg {
+        width: 20px;
+        height: 20px;
+        fill: currentColor;
+      }
+      .tw-wa-tab.is-active {
+        color: #5cc1ff;
+      }
+      .tw-wa-tab.is-active::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: #2a8bf2;
+      }
+      .tw-wa-panel-body {
         padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 14px;
-        pointer-events: auto;
+        gap: 18px;
+        overflow-y: auto;
+        height: 100%;
       }
-      .tw-wa-panel h3 {
-        margin: 0;
-        font-size: 16px;
+      .tw-wa-tab-panel {
+        display: none;
+        flex-direction: column;
+        gap: 16px;
       }
-      .tw-wa-field {
+      .tw-wa-tab-panel.is-active {
+        display: flex;
+      }
+      .tw-wa-section {
+        background: #131516;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        padding: 12px;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 12px;
+      }
+      .tw-wa-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 15px;
+        font-weight: 600;
+        color: #f1f5ff;
+      }
+      .tw-wa-section-header button {
+        background: transparent;
+        border: none;
+        color: #7da9ff;
+        cursor: pointer;
+      }
+      .tw-wa-field {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 10px;
+        align-items: center;
         font-size: 12px;
         color: #9aa7b6;
       }
-      .tw-wa-input {
-        background: #1e1f22;
+      .tw-wa-field label {
+        color: #e0e6f0;
+      }
+      .tw-wa-input,
+      .tw-wa-select,
+      .tw-wa-textarea {
+        background: #1b1f24;
         border: 1px solid rgba(255,255,255,0.1);
         border-radius: 8px;
         padding: 8px 10px;
         color: #f3f7ff;
         font-size: 13px;
+        width: 100%;
       }
-      .tw-wa-toggle {
+      .tw-wa-textarea {
+        min-height: 90px;
+        resize: vertical;
+      }
+      .tw-wa-input[readonly] {
+        opacity: 0.85;
+      }
+      .tw-wa-inline {
         display: flex;
+        gap: 10px;
         align-items: center;
-        gap: 8px;
       }
-      .tw-wa-toggle span {
+      .tw-wa-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+      }
+      .tw-wa-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .tw-wa-slider {
+        position: absolute;
+        inset: 0;
+        background: #2b3138;
+        border-radius: 999px;
+        transition: 0.2s ease;
+      }
+      .tw-wa-slider::before {
+        content: "";
+        position: absolute;
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        top: 3px;
+        background: #cbd5f5;
+        border-radius: 999px;
+        transition: 0.2s ease;
+      }
+      .tw-wa-switch input:checked + .tw-wa-slider {
+        background: #17a861;
+      }
+      .tw-wa-switch input:checked + .tw-wa-slider::before {
+        transform: translateX(20px);
+        background: #fff;
+      }
+      .tw-wa-link {
+        color: #4aa3ff;
         font-size: 12px;
-        color: #9aa7b6;
+        cursor: pointer;
+      }
+      .tw-wa-divider {
+        height: 1px;
+        background: rgba(255,255,255,0.08);
       }
       .tw-wa-sync {
-        margin-top: auto;
         width: 100%;
         background: #1c5aa6;
         border: none;
@@ -156,9 +276,84 @@ function mountOverlay(opts) {
         border-radius: 10px;
         padding: 10px;
         font-size: 11px;
-        max-height: 160px;
+        max-height: 140px;
         overflow: auto;
         white-space: pre-wrap;
+        color: #a4b0c0;
+      }
+      .tw-wa-quick-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .tw-wa-btn-secondary {
+        border: 1px solid rgba(70, 130, 255, 0.6);
+        background: transparent;
+        color: #7da9ff;
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .tw-wa-reminder-list,
+      .tw-wa-quick-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .tw-wa-reminder-item,
+      .tw-wa-quick-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: #181c21;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.06);
+      }
+      .tw-wa-reminder-item label {
+        flex: 1;
+        color: #e1e7f4;
+        font-size: 13px;
+      }
+      .tw-wa-count-pill {
+        background: #1f2937;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 12px;
+        color: #8fa3bf;
+      }
+      .tw-wa-empty {
+        font-size: 12px;
+        color: #8a97ab;
+        padding: 8px 0;
+      }
+      .tw-wa-collapsible-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+      .tw-wa-collapsible-toggle svg {
+        width: 16px;
+        height: 16px;
+        transition: transform 0.2s ease;
+      }
+      .tw-wa-collapsible-toggle[aria-expanded="false"] svg {
+        transform: rotate(-90deg);
+      }
+      .tw-wa-collapsible-content {
+        display: none;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .tw-wa-collapsible-content.is-open {
+        display: flex;
       }
       .tw-wa-modal {
         position: fixed;
@@ -180,6 +375,7 @@ function mountOverlay(opts) {
         padding: 22px;
         color: #f4f7ff;
         box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+        position: relative;
       }
       .tw-wa-modal-card h2 {
         margin: 8px 0 4px;
@@ -216,7 +412,7 @@ function mountOverlay(opts) {
         background: #1c5aa6;
         color: #fff;
       }
-      .tw-wa-link {
+      .tw-wa-link-alt {
         background: transparent;
         color: #4aa3ff;
         border: none;
@@ -243,11 +439,11 @@ function mountOverlay(opts) {
     <div class="tw-wa-topbar">
       <div class="tw-wa-logo">Tynkwink CRM</div>
       <div class="tw-wa-nav">
-        <span>All Chats (222)</span>
-        <span>Unread Chats (5)</span>
-        <span>Needs Reply (136)</span>
-        <span>Groups (20)</span>
-        <span>Pending Reminders (14)</span>
+        <span data-role="nav-all">All Chats (\u2014)</span>
+        <span data-role="nav-unread">Unread Chats (\u2014)</span>
+        <span data-role="nav-needs-reply">Needs Reply (\u2014)</span>
+        <span data-role="nav-groups">Groups (\u2014)</span>
+        <span data-role="nav-reminders">Pending Reminders (\u2014)</span>
       </div>
       <div class="tw-wa-actions">
         <span class="tw-wa-auth-status">Checking CRM login...</span>
@@ -255,42 +451,133 @@ function mountOverlay(opts) {
         <button class="tw-wa-pill" data-action="sync">Sync Chat</button>
       </div>
     </div>
-    <div class="tw-wa-pipeline">
-      <div class="tw-wa-stage" style="background:#ff914d;"><strong>43</strong><span>New Lead</span></div>
-      <div class="tw-wa-stage" style="background:#3f7ccf;"><strong>3</strong><span>Qualified</span></div>
-      <div class="tw-wa-stage" style="background:#a975c2;"><strong>2</strong><span>In Conversation</span></div>
-      <div class="tw-wa-stage" style="background:#4fb06a;"><strong>2</strong><span>Good Lead</span></div>
-      <div class="tw-wa-stage" style="background:#f05a59;"><strong>2</strong><span>Lead Won</span></div>
-      <div class="tw-wa-stage" style="background:#8165d5;"><strong>2</strong><span>No Response</span></div>
-      <div class="tw-wa-stage" style="background:#4db1d5;"><strong>2</strong><span>Deleted</span></div>
-    </div>
+    <div class="tw-wa-pipeline" data-role="pipeline"></div>
     <div class="tw-wa-panel">
-      <h3>Personal Info</h3>
-      <div class="tw-wa-field">
-        <label>Name</label>
-        <div class="tw-wa-input">Samyak Golchha</div>
+      <div class="tw-wa-panel-tabs" role="tablist">
+        <button class="tw-wa-tab is-active" data-tab="personal" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/></svg>
+        </button>
+        <button class="tw-wa-tab" data-tab="call" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1v3.5c0 .55-.45 1-1 1C10.07 21.51 2.5 13.94 2.5 4.5c0-.55.45-1 1-1H7c.55 0 1 .45 1 1 0 1.24.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.7 2.7z"/></svg>
+        </button>
+        <button class="tw-wa-tab" data-tab="quick" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v14l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        </button>
+        <button class="tw-wa-tab" data-tab="assistant" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 00-7 7v5H4a2 2 0 00-2 2v2a2 2 0 002 2h2v-9a6 6 0 0112 0v9h2a2 2 0 002-2v-2a2 2 0 00-2-2h-1V9a7 7 0 00-7-7z"/></svg>
+        </button>
       </div>
-      <div class="tw-wa-field">
-        <label>Phone</label>
-        <div class="tw-wa-input">+91 81871818389</div>
+      <div class="tw-wa-panel-body">
+        <section class="tw-wa-tab-panel is-active" data-panel="personal">
+          <div class="tw-wa-section">
+            <div class="tw-wa-section-header">
+              <span>Personal Info</span>
+              <button type="button" title="Edit">\u270E</button>
+            </div>
+            <div class="tw-wa-field">
+              <label>Name</label>
+              <input class="tw-wa-input" data-role="contact-name" placeholder="Lead name" />
+            </div>
+            <div class="tw-wa-field">
+              <label>Phone</label>
+              <div class="tw-wa-inline">
+                <input class="tw-wa-input" data-role="contact-phone" placeholder="Phone number" />
+                <button class="tw-wa-btn-secondary" data-action="copy-phone">Copy</button>
+              </div>
+            </div>
+            <div class="tw-wa-field">
+              <label>AI Auto-Reply</label>
+              <div class="tw-wa-inline" style="justify-content:space-between;">
+                <span data-role="ai-label">(Global Switch: --)</span>
+                <label class="tw-wa-switch">
+                  <input type="checkbox" data-role="ai-toggle" disabled />
+                  <span class="tw-wa-slider"></span>
+                </label>
+              </div>
+            </div>
+            <div class="tw-wa-field">
+              <label>Pipeline</label>
+              <input class="tw-wa-input" data-role="pipeline-name" readonly />
+            </div>
+            <div class="tw-wa-field">
+              <label>Stage</label>
+              <select class="tw-wa-select" data-role="stage-select"></select>
+            </div>
+            <div class="tw-wa-field">
+              <label>Sequence</label>
+              <span class="tw-wa-link" data-role="sequence">No Sequence</span>
+            </div>
+            <div class="tw-wa-field">
+              <label>Source</label>
+              <input class="tw-wa-input" data-role="source-name" readonly />
+            </div>
+          </div>
+          <div class="tw-wa-section">
+            <button class="tw-wa-collapsible-toggle" data-action="toggle-additional" aria-expanded="false">
+              <span class="tw-wa-section-header">Additional Info</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div class="tw-wa-collapsible-content" data-role="additional-content">
+              <div class="tw-wa-field">
+                <label>Email</label>
+                <input class="tw-wa-input" data-role="contact-email" placeholder="Enter the Email" />
+              </div>
+              <div class="tw-wa-field">
+                <label>Company</label>
+                <input class="tw-wa-input" data-role="contact-company" placeholder="Company" />
+              </div>
+              <div class="tw-wa-field">
+                <label>Created</label>
+                <input class="tw-wa-input" data-role="contact-created" readonly />
+              </div>
+              <button class="tw-wa-btn-secondary" type="button">+ Add New Attribute</button>
+            </div>
+          </div>
+          <div class="tw-wa-section">
+            <button class="tw-wa-collapsible-toggle" data-action="toggle-activity" aria-expanded="true">
+              <span class="tw-wa-section-header">Activity History</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div class="tw-wa-collapsible-content is-open" data-role="activity-content">
+              <label class="tw-wa-field" style="grid-template-columns:1fr; gap:6px;">
+                <span style="color:#9aa7b6;">Notes</span>
+                <textarea class="tw-wa-textarea" placeholder="Take a note for this chat."></textarea>
+              </label>
+            </div>
+          </div>
+          <div class="tw-wa-log" data-role="log"></div>
+          <button class="tw-wa-sync" data-action="sync">Import lead to Tynkwink CRM</button>
+        </section>
+
+        <section class="tw-wa-tab-panel" data-panel="call">
+          <div class="tw-wa-section">
+            <div class="tw-wa-section-header">
+              <span>Call Tracker</span>
+              <button class="tw-wa-btn-secondary" type="button">Add Reminder</button>
+            </div>
+            <div class="tw-wa-reminder-list" data-role="reminder-list"></div>
+          </div>
+        </section>
+
+        <section class="tw-wa-tab-panel" data-panel="quick">
+          <div class="tw-wa-section">
+            <div class="tw-wa-quick-actions">
+              <span class="tw-wa-section-header">Quick Replies</span>
+              <button class="tw-wa-btn-secondary" type="button">+ Add a Quick Reply</button>
+            </div>
+            <div class="tw-wa-quick-list" data-role="quick-list"></div>
+          </div>
+        </section>
+
+        <section class="tw-wa-tab-panel" data-panel="assistant">
+          <div class="tw-wa-section">
+            <div class="tw-wa-section-header">
+              <span>AI Assistant</span>
+            </div>
+            <div class="tw-wa-empty">Coming soon: AI suggestions based on your Tynkwink CRM history.</div>
+          </div>
+        </section>
       </div>
-      <div class="tw-wa-toggle">
-        <div class="tw-wa-input" style="flex:1">AI Auto-Reply Status: On</div>
-      </div>
-      <div class="tw-wa-field">
-        <label>Pipeline</label>
-        <div class="tw-wa-input">Leads</div>
-      </div>
-      <div class="tw-wa-field">
-        <label>Stage</label>
-        <div class="tw-wa-input">New Lead</div>
-      </div>
-      <div class="tw-wa-field">
-        <label>Source</label>
-        <div class="tw-wa-input">Extension</div>
-      </div>
-      <div class="tw-wa-log" data-role="log"></div>
-      <button class="tw-wa-sync" data-action="sync">Sync current chat</button>
     </div>
     <div class="tw-wa-modal" data-role="modal">
       <div class="tw-wa-modal-card">
@@ -314,7 +601,7 @@ function mountOverlay(opts) {
           </div>
           <div class="tw-wa-modal-actions">
             <button class="tw-wa-primary" type="submit">Get Access</button>
-            <button class="tw-wa-link" type="button">Forgot Password?</button>
+            <button class="tw-wa-link-alt" type="button">Forgot Password?</button>
           </div>
           <div class="tw-wa-modal-status" data-role="modal-status"></div>
         </form>
@@ -323,6 +610,23 @@ function mountOverlay(opts) {
   `;
   document.body.appendChild(root);
   const authStatus = root.querySelector(".tw-wa-auth-status");
+  const navAll = root.querySelector('[data-role="nav-all"]');
+  const navUnread = root.querySelector('[data-role="nav-unread"]');
+  const navNeedsReply = root.querySelector('[data-role="nav-needs-reply"]');
+  const navGroups = root.querySelector('[data-role="nav-groups"]');
+  const navReminders = root.querySelector('[data-role="nav-reminders"]');
+  const pipelineContainer = root.querySelector('[data-role="pipeline"]');
+  const contactName = root.querySelector('[data-role="contact-name"]');
+  const contactPhone = root.querySelector('[data-role="contact-phone"]');
+  const contactEmail = root.querySelector('[data-role="contact-email"]');
+  const contactCompany = root.querySelector('[data-role="contact-company"]');
+  const contactCreated = root.querySelector('[data-role="contact-created"]');
+  const aiLabel = root.querySelector('[data-role="ai-label"]');
+  const aiToggle = root.querySelector('[data-role="ai-toggle"]');
+  const pipelineName = root.querySelector('[data-role="pipeline-name"]');
+  const stageSelect = root.querySelector('[data-role="stage-select"]');
+  const sequenceLabel = root.querySelector('[data-role="sequence"]');
+  const sourceName = root.querySelector('[data-role="source-name"]');
   const modal = root.querySelector('[data-role="modal"]');
   const modalStatus = root.querySelector('[data-role="modal-status"]');
   const tenantField = root.querySelector('[data-role="tenant-field"]');
@@ -333,7 +637,162 @@ function mountOverlay(opts) {
   const loginBtn = root.querySelector('[data-action="login"]');
   const closeBtn = root.querySelector('[data-action="close"]');
   const syncButtons = root.querySelectorAll('[data-action="sync"]');
+  const tabButtons = Array.from(root.querySelectorAll("[data-tab]"));
+  const tabPanels = Array.from(root.querySelectorAll("[data-panel]"));
+  const additionalToggle = root.querySelector('[data-action="toggle-additional"]');
+  const additionalContent = root.querySelector('[data-role="additional-content"]');
+  const activityToggle = root.querySelector('[data-action="toggle-activity"]');
+  const activityContent = root.querySelector('[data-role="activity-content"]');
+  const reminderList = root.querySelector('[data-role="reminder-list"]');
+  const quickList = root.querySelector('[data-role="quick-list"]');
+  const copyPhoneButton = root.querySelector('[data-action="copy-phone"]');
   let isLoggingIn = false;
+  let isLoadingSummary = false;
+  let lastSnapshot = { name: null, phone: null };
+  let headerObserver = null;
+  let observedHeader = null;
+  const updateChatSnapshot = () => {
+    const snapshot = opts.onGetChatSnapshot();
+    const nextName = snapshot?.name || null;
+    const nextPhone = snapshot?.phone || null;
+    if (nextName === lastSnapshot.name && nextPhone === lastSnapshot.phone) return;
+    lastSnapshot = { name: nextName, phone: nextPhone };
+    contactName.value = nextName || "";
+    contactPhone.value = nextPhone || "";
+    contactCreated.value = (/* @__PURE__ */ new Date()).toLocaleString();
+  };
+  const ensureHeaderObserver = () => {
+    const header = document.querySelector("header");
+    if (!header || header === observedHeader) return;
+    headerObserver?.disconnect();
+    observedHeader = header;
+    headerObserver = new MutationObserver(() => updateChatSnapshot());
+    headerObserver.observe(header, { subtree: true, childList: true, characterData: true });
+    updateChatSnapshot();
+  };
+  const setTab = (tabId) => {
+    tabButtons.forEach((button) => {
+      const isActive = button.dataset.tab === tabId;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-selected", String(isActive));
+    });
+    tabPanels.forEach((panel) => {
+      panel.classList.toggle("is-active", panel.dataset.panel === tabId);
+    });
+  };
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setTab(button.dataset.tab || "personal");
+    });
+  });
+  const toggleCollapsible = (toggle, content) => {
+    const isExpanded = toggle.getAttribute("aria-expanded") === "true";
+    toggle.setAttribute("aria-expanded", String(!isExpanded));
+    content.classList.toggle("is-open", !isExpanded);
+  };
+  additionalToggle.addEventListener("click", () => toggleCollapsible(additionalToggle, additionalContent));
+  activityToggle.addEventListener("click", () => toggleCollapsible(activityToggle, activityContent));
+  copyPhoneButton.addEventListener("click", async () => {
+    if (!contactPhone.value) return;
+    try {
+      await navigator.clipboard.writeText(contactPhone.value);
+      copyPhoneButton.textContent = "Copied";
+      setTimeout(() => {
+        copyPhoneButton.textContent = "Copy";
+      }, 1200);
+    } catch {
+      copyPhoneButton.textContent = "Unable";
+    }
+  });
+  const setEmptyList = (container, message) => {
+    container.innerHTML = `<div class="tw-wa-empty">${message}</div>`;
+  };
+  const updateSummary = (summary) => {
+    if (!summary) return;
+    navAll.textContent = `All Chats (${summary.stats?.allChats ?? 0})`;
+    navUnread.textContent = `Unread Chats (${summary.stats?.unreadChats ?? 0})`;
+    navNeedsReply.textContent = `Needs Reply (${summary.stats?.needsReply ?? 0})`;
+    navGroups.textContent = `Groups (${summary.stats?.groups ?? 0})`;
+    navReminders.textContent = `Pending Reminders (${summary.stats?.pendingReminders ?? 0})`;
+    pipelineName.value = summary.pipeline?.name ?? "Leads";
+    const defaultStage = summary.pipeline?.stages?.find((stage) => stage.id === summary.pipeline?.defaultStageId) ?? summary.pipeline?.stages?.[0];
+    stageSelect.innerHTML = "";
+    (summary.pipeline?.stages ?? []).forEach((stage) => {
+      const option = document.createElement("option");
+      option.value = stage.id;
+      option.textContent = stage.name ?? "Stage";
+      stageSelect.appendChild(option);
+    });
+    if (defaultStage?.id) {
+      stageSelect.value = defaultStage.id;
+    }
+    const isAiEnabled = Boolean(summary.features?.aiAutoReplyEnabled);
+    aiToggle.checked = isAiEnabled;
+    aiLabel.textContent = `(Global Switch: ${isAiEnabled ? "on" : "off"})`;
+    sourceName.value = "Extension";
+    contactEmail.value = summary.user?.email ?? contactEmail.value;
+    pipelineContainer.innerHTML = "";
+    const stages = summary.pipeline?.stages ?? [];
+    stages.forEach((stage) => {
+      const stageEl = document.createElement("div");
+      stageEl.className = "tw-wa-stage";
+      stageEl.style.background = stage.color || "#64748b";
+      stageEl.innerHTML = `<strong>${stage.count ?? 0}</strong><span>${stage.name ?? "Stage"}</span>`;
+      pipelineContainer.appendChild(stageEl);
+    });
+    const reminders = summary.reminders ?? [];
+    reminderList.innerHTML = "";
+    if (reminders.length === 0) {
+      setEmptyList(reminderList, "No reminders yet.");
+    } else {
+      reminders.forEach((reminder) => {
+        const item = document.createElement("div");
+        item.className = "tw-wa-reminder-item";
+        item.innerHTML = `
+          <input type="checkbox" ${reminder?.done ? "checked" : ""} />
+          <label>${reminder?.title ?? "Reminder"}</label>
+        `;
+        reminderList.appendChild(item);
+      });
+    }
+    const quickReplies = summary.quickReplies ?? [];
+    quickList.innerHTML = "";
+    if (quickReplies.length === 0) {
+      setEmptyList(quickList, "No quick replies configured.");
+    } else {
+      quickReplies.forEach((reply) => {
+        const item = document.createElement("div");
+        item.className = "tw-wa-quick-item";
+        item.innerHTML = `
+          <span>${reply?.title ?? "Quick Reply"}</span>
+          <span class="tw-wa-count-pill">${reply?.count ?? 0}</span>
+        `;
+        quickList.appendChild(item);
+      });
+    }
+    const canSync = Boolean(summary.permissions?.canSync);
+    syncButtons.forEach((button) => {
+      const btn = button;
+      btn.disabled = !canSync;
+      btn.title = canSync ? "" : "You do not have permission to sync.";
+    });
+  };
+  const refreshSummary = async () => {
+    if (isLoadingSummary) return;
+    isLoadingSummary = true;
+    log.textContent = "Loading CRM summary...";
+    try {
+      const res = await opts.onGetSummary();
+      if (!res?.ok) {
+        log.textContent = res?.error || "Unable to load CRM summary.";
+        return;
+      }
+      updateSummary(res?.summary);
+      log.textContent = "CRM summary synced.";
+    } finally {
+      isLoadingSummary = false;
+    }
+  };
   const openModal = () => {
     modal.classList.add("is-visible");
   };
@@ -356,9 +815,14 @@ function mountOverlay(opts) {
     }
   };
   (async () => {
+    ensureHeaderObserver();
+    setInterval(ensureHeaderObserver, 1e3);
     const res = await opts.onCheckAuth();
     const token = res?.auth?.token ?? null;
     setAuthState(token);
+    if (token) {
+      await refreshSummary();
+    }
   })();
   loginForm.onsubmit = async (event) => {
     event.preventDefault();
@@ -390,6 +854,7 @@ function mountOverlay(opts) {
         }
         modalStatus.textContent = "Login successful. Credentials synced.";
         setAuthState(followUp?.auth?.token ?? null);
+        await refreshSummary();
         isLoggingIn = false;
         loginBtn.disabled = false;
         return;
@@ -411,6 +876,7 @@ function mountOverlay(opts) {
     }
     modalStatus.textContent = "Login successful. Credentials synced.";
     setAuthState(res?.auth?.token ?? null);
+    await refreshSummary();
     isLoggingIn = false;
     loginBtn.disabled = false;
   };
@@ -420,6 +886,7 @@ function mountOverlay(opts) {
       try {
         const res = await opts.onSync();
         log.textContent = JSON.stringify(res, null, 2);
+        await refreshSummary();
       } catch (error) {
         log.textContent = `Sync failed: ${error?.message || "unknown error"}`;
       }
@@ -491,6 +958,16 @@ async function loginCrm(payload) {
   const res = await chrome.runtime.sendMessage({ type: "AUTH_LOGIN", payload });
   return res;
 }
+async function loadSummary() {
+  const res = await chrome.runtime.sendMessage({ type: "EXTENSION_SUMMARY" });
+  return res;
+}
+function getChatSnapshot() {
+  return {
+    name: getChatTitle() || null,
+    phone: getPhoneE164BestEffort()
+  };
+}
 async function init() {
   for (let i = 0; i < 30; i++) {
     const header = document.querySelector("header");
@@ -501,7 +978,9 @@ async function init() {
   mountOverlay({
     onSync: syncCurrentChat,
     onCheckAuth: checkAuth,
-    onLogin: loginCrm
+    onLogin: loginCrm,
+    onGetSummary: loadSummary,
+    onGetChatSnapshot: getChatSnapshot
   });
 }
 init();
