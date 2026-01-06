@@ -16,6 +16,11 @@ export function mountOverlay(opts: OverlayOpts) {
   const id = "tw-wa-overlay-root";
   if (document.getElementById(id)) return;
 
+  document.documentElement.classList.add("tw-wa-overlay-active");
+  if (document.body) {
+    document.body.classList.add("tw-wa-overlay-active");
+  }
+
   const root = el("div");
   root.id = id;
   root.style.position = "fixed";
@@ -26,12 +31,31 @@ export function mountOverlay(opts: OverlayOpts) {
 
   root.innerHTML = `
     <style>
+      :root {
+        --tw-wa-panel-width: 360px;
+        --tw-wa-topbar-height: 54px;
+        --tw-wa-pipeline-height: 52px;
+      }
+      body.tw-wa-overlay-active {
+        padding-top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
+        padding-right: var(--tw-wa-panel-width);
+        box-sizing: border-box;
+      }
+      body.tw-wa-overlay-active #app {
+        min-height: calc(100vh - var(--tw-wa-topbar-height) - var(--tw-wa-pipeline-height));
+        box-sizing: border-box;
+      }
+      @media (max-width: 1280px) {
+        :root {
+          --tw-wa-panel-width: 320px;
+        }
+      }
       .tw-wa-topbar {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
-        height: 54px;
+        height: var(--tw-wa-topbar-height);
         background: linear-gradient(180deg, #111, #1b1b1b);
         border-bottom: 1px solid rgba(255,255,255,0.08);
         display: flex;
@@ -81,10 +105,10 @@ export function mountOverlay(opts: OverlayOpts) {
       }
       .tw-wa-pipeline {
         position: fixed;
-        top: 54px;
+        top: var(--tw-wa-topbar-height);
         left: 0;
-        right: 360px;
-        height: 52px;
+        right: var(--tw-wa-panel-width);
+        height: var(--tw-wa-pipeline-height);
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         gap: 2px;
@@ -108,9 +132,9 @@ export function mountOverlay(opts: OverlayOpts) {
       }
       .tw-wa-panel {
         position: fixed;
-        top: 54px;
+        top: var(--tw-wa-topbar-height);
         right: 0;
-        width: 360px;
+        width: var(--tw-wa-panel-width);
         bottom: 0;
         background: #151515;
         border-left: 1px solid rgba(255,255,255,0.08);
