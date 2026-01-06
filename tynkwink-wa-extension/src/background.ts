@@ -1,7 +1,7 @@
 import type { BgMessage } from "./common/types";
 import { getAuth, saveAuth } from "./common/storage";
 
-const DEFAULT_API_BASE = "https://api.tynkwink.com";
+const DEFAULT_API_BASE = "http://locahost:4000/api";
 
 chrome.runtime.onMessage.addListener((message: BgMessage, _sender, sendResponse) => {
   (async () => {

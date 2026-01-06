@@ -14,6 +14,7 @@ async function getAuth() {
 }
 
 // src/background.ts
+var DEFAULT_API_BASE = "http://locahost:4000/api";
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   (async () => {
     try {
@@ -34,10 +35,63 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ ok: true, auth });
         return;
       }
+      if (message.type === "AUTH_LOGIN") {
+        const auth = await getAuth();
+        const apiBase = auth.apiBase || DEFAULT_API_BASE;
+        const url = `${apiBase}/api/auth/login`;
+        let resp;
+        try {
+          resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: message.payload.email,
+              password: message.payload.password,
+              tenantId: message.payload.tenantId || void 0
+            })
+          });
+        } catch (error) {
+          sendResponse({
+            ok: false,
+            error: error?.message === "Failed to fetch" ? "Unable to reach Tynkwink CRM. Check your internet connection or API Base URL." : error?.message || "Unable to reach Tynkwink CRM."
+          });
+          return;
+        }
+        const data = await resp.json().catch(async () => {
+          const text = await resp.text().catch(() => "");
+          return text ? { message: text } : {};
+        });
+        if (!resp.ok) {
+          sendResponse({ ok: false, error: data?.message || `Login failed (status ${resp.status}).` });
+          return;
+        }
+        if (data?.requiresTenantSelection) {
+          sendResponse({
+            ok: true,
+            requiresTenantSelection: true,
+            tenants: data?.tenants ?? []
+          });
+          return;
+        }
+        await saveAuth({
+          apiBase,
+          token: data?.accessToken || null,
+          tenantId: data?.tenantId || null
+        });
+        sendResponse({
+          ok: true,
+          auth: {
+            apiBase,
+            token: data?.accessToken || null,
+            tenantId: data?.tenantId || null
+          }
+        });
+        return;
+      }
       if (message.type === "SYNC_CHAT") {
         const auth = await getAuth();
         if (!auth.apiBase || !auth.token || !auth.tenantId) {
-          sendResponse({ ok: false, error: "Not authenticated. Open extension popup and set API Base, Tenant ID, Token." });
+          sendResponse({ ok: false, error: "Not authenticated. Log in to Tynkwink CRM from the WhatsApp overlay." });
           return;
         }
         const url = `${auth.apiBase}/api/integrations/whatsapp-web/sync`;
