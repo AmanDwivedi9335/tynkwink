@@ -333,6 +333,7 @@ function mountOverlay(opts) {
   const loginBtn = root.querySelector('[data-action="login"]');
   const closeBtn = root.querySelector('[data-action="close"]');
   const syncButtons = root.querySelectorAll('[data-action="sync"]');
+  let isLoggingIn = false;
   const openModal = () => {
     modal.classList.add("is-visible");
   };
@@ -361,7 +362,10 @@ function mountOverlay(opts) {
   })();
   loginForm.onsubmit = async (event) => {
     event.preventDefault();
+    if (isLoggingIn) return;
     modalStatus.textContent = "Signing in...";
+    isLoggingIn = true;
+    loginBtn.disabled = true;
     const formData = new FormData(loginForm);
     const email = String(formData.get("email") || "").trim();
     const password = String(formData.get("password") || "").trim();
@@ -370,13 +374,30 @@ function mountOverlay(opts) {
     const res = await opts.onLogin({ email, password, tenantId: normalizedTenantId });
     if (!res?.ok) {
       modalStatus.textContent = res?.error || "Login failed.";
+      isLoggingIn = false;
+      loginBtn.disabled = false;
       return;
     }
     if (res?.requiresTenantSelection) {
+      const tenants = res.tenants || [];
+      if (tenants.length === 1) {
+        const followUp = await opts.onLogin({ email, password, tenantId: tenants[0].tenantId });
+        if (!followUp?.ok) {
+          modalStatus.textContent = followUp?.error || "Login failed.";
+          isLoggingIn = false;
+          loginBtn.disabled = false;
+          return;
+        }
+        modalStatus.textContent = "Login successful. Credentials synced.";
+        setAuthState(followUp?.auth?.token ?? null);
+        isLoggingIn = false;
+        loginBtn.disabled = false;
+        return;
+      }
       tenantInput.style.display = "none";
       tenantSelect.style.display = "block";
       tenantSelect.innerHTML = "";
-      for (const tenant of res.tenants || []) {
+      for (const tenant of tenants) {
         const option = document.createElement("option");
         option.value = tenant.tenantId;
         option.textContent = `${tenant.tenantName} (${tenant.role})`;
@@ -384,10 +405,14 @@ function mountOverlay(opts) {
       }
       tenantSelect.value = tenantSelect.options[0]?.value ?? "";
       modalStatus.textContent = "Select a tenant to continue.";
+      isLoggingIn = false;
+      loginBtn.disabled = false;
       return;
     }
     modalStatus.textContent = "Login successful. Credentials synced.";
     setAuthState(res?.auth?.token ?? null);
+    isLoggingIn = false;
+    loginBtn.disabled = false;
   };
   syncButtons.forEach((button) => {
     button.onclick = async () => {
