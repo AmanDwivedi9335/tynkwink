@@ -11,6 +11,7 @@ import staffRoutes from "./routes/staff.routes";
 import gmailRoutes from "./routes/gmail.routes";
 import leadInboxRoutes from "./routes/leadInbox.routes";
 import tenantSettingsRoutes from "./routes/tenantSettings.routes";
+import extensionRoutes from "./routes/extension.routes";
 import { attachCorrelationId } from "./middleware/correlation";
 
 export const app = express();
@@ -37,3 +38,4 @@ app.use("/api", staffRoutes);
 app.use("/api", gmailRoutes);
 app.use("/api", leadInboxRoutes);
 app.use("/api", tenantSettingsRoutes);
+app.use("/api", extensionRoutes);

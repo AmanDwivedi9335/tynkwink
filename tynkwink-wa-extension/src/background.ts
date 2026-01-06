@@ -5,6 +5,7 @@ const DEFAULT_API_BASE = "http://localhost:4000";
 const API_PREFIX = "/api";
 const LOGIN_TIMEOUT_MS = 12000;
 const SYNC_TIMEOUT_MS = 20000;
+const SUMMARY_TIMEOUT_MS = 12000;
 const RETRY_STATUSES = new Set([429, 502, 503, 504]);
 
 function buildApiUrl(apiBase: string, path: string) {
@@ -220,6 +221,52 @@ chrome.runtime.onMessage.addListener((message: BgMessage, _sender, sendResponse)
         }
 
         sendResponse({ ok: true, data });
+        return;
+      }
+
+      if (message.type === "EXTENSION_SUMMARY") {
+        const auth = await getAuth();
+        if (!auth.apiBase || !auth.token || !auth.tenantId) {
+          sendResponse({ ok: false, error: "Not authenticated. Log in to Tynkwink CRM from the WhatsApp overlay." });
+          return;
+        }
+
+        const url = buildApiUrl(auth.apiBase, "/extension/summary");
+
+        let resp: Response;
+        try {
+          resp = await fetchWithTimeout(
+            url,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${auth.token}`
+              }
+            },
+            SUMMARY_TIMEOUT_MS
+          );
+        } catch (error: any) {
+          sendResponse({
+            ok: false,
+            error:
+              error?.name === "AbortError"
+                ? "Summary request timed out. Please try again."
+                : error?.message || "Unable to reach Tynkwink CRM."
+          });
+          return;
+        }
+
+        const data = await readResponseBody(resp);
+        if (!resp.ok) {
+          if (resp.status === 401 || resp.status === 403) {
+            await saveAuth({ apiBase: auth.apiBase, token: null, tenantId: null });
+          }
+          sendResponse({ ok: false, error: data?.message || "Unable to load summary.", status: resp.status });
+          return;
+        }
+
+        sendResponse({ ok: true, summary: data });
         return;
       }
 
