@@ -18,6 +18,7 @@ var DEFAULT_API_BASE = "http://localhost:4000";
 var API_PREFIX = "/api";
 var LOGIN_TIMEOUT_MS = 12e3;
 var SYNC_TIMEOUT_MS = 2e4;
+var SUMMARY_TIMEOUT_MS = 12e3;
 var RETRY_STATUSES = /* @__PURE__ */ new Set([429, 502, 503, 504]);
 function buildApiUrl(apiBase, path) {
   const trimmed = apiBase.replace(/\/+$/, "");
@@ -203,6 +204,44 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           return;
         }
         sendResponse({ ok: true, data });
+        return;
+      }
+      if (message.type === "EXTENSION_SUMMARY") {
+        const auth = await getAuth();
+        if (!auth.apiBase || !auth.token || !auth.tenantId) {
+          sendResponse({ ok: false, error: "Not authenticated. Log in to Tynkwink CRM from the WhatsApp overlay." });
+          return;
+        }
+        const url = buildApiUrl(auth.apiBase, "/extension/summary");
+        let resp;
+        try {
+          resp = await fetchWithTimeout(
+            url,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${auth.token}`
+              }
+            },
+            SUMMARY_TIMEOUT_MS
+          );
+        } catch (error) {
+          sendResponse({
+            ok: false,
+            error: error?.name === "AbortError" ? "Summary request timed out. Please try again." : error?.message || "Unable to reach Tynkwink CRM."
+          });
+          return;
+        }
+        const data = await readResponseBody(resp);
+        if (!resp.ok) {
+          if (resp.status === 401 || resp.status === 403) {
+            await saveAuth({ apiBase: auth.apiBase, token: null, tenantId: null });
+          }
+          sendResponse({ ok: false, error: data?.message || "Unable to load summary.", status: resp.status });
+          return;
+        }
+        sendResponse({ ok: true, summary: data });
         return;
       }
       sendResponse({ ok: false, error: "Unknown message type" });

@@ -662,11 +662,29 @@ export function mountOverlay(opts: OverlayOpts) {
   let isLoggingIn = false;
   let isLoadingSummary = false;
 
+  let lastSnapshot: { name: string | null; phone: string | null } = { name: null, phone: null };
+  let headerObserver: MutationObserver | null = null;
+  let observedHeader: HTMLElement | null = null;
+
   const updateChatSnapshot = () => {
     const snapshot = opts.onGetChatSnapshot();
-    contactName.value = snapshot?.name || "";
-    contactPhone.value = snapshot?.phone || "";
+    const nextName = snapshot?.name || null;
+    const nextPhone = snapshot?.phone || null;
+    if (nextName === lastSnapshot.name && nextPhone === lastSnapshot.phone) return;
+    lastSnapshot = { name: nextName, phone: nextPhone };
+    contactName.value = nextName || "";
+    contactPhone.value = nextPhone || "";
     contactCreated.value = new Date().toLocaleString();
+  };
+
+  const ensureHeaderObserver = () => {
+    const header = document.querySelector("header") as HTMLElement | null;
+    if (!header || header === observedHeader) return;
+    headerObserver?.disconnect();
+    observedHeader = header;
+    headerObserver = new MutationObserver(() => updateChatSnapshot());
+    headerObserver.observe(header, { subtree: true, childList: true, characterData: true });
+    updateChatSnapshot();
   };
 
   const setTab = (tabId: string) => {
@@ -835,7 +853,8 @@ export function mountOverlay(opts: OverlayOpts) {
   };
 
   (async () => {
-    updateChatSnapshot();
+    ensureHeaderObserver();
+    setInterval(ensureHeaderObserver, 1000);
     const res = await opts.onCheckAuth();
     const token = res?.auth?.token ?? null;
     setAuthState(token);
