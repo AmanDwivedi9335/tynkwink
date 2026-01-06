@@ -315,9 +315,10 @@ export function mountOverlay(opts: OverlayOpts) {
             <label>Password</label>
             <input class="tw-wa-input" type="password" name="password" placeholder="Enter your password" required />
           </div>
-          <div class="tw-wa-modal-field" data-role="tenant-field" style="display:none;">
-            <label>Tenant</label>
-            <select class="tw-wa-input" name="tenantId"></select>
+          <div class="tw-wa-modal-field" data-role="tenant-field">
+            <label>Tenant ID (optional)</label>
+            <input class="tw-wa-input" type="text" name="tenantId" placeholder="workspace id or slug" data-role="tenant-input" />
+            <select class="tw-wa-input" name="tenantId" data-role="tenant-select" style="display:none;"></select>
           </div>
           <div class="tw-wa-modal-actions">
             <button class="tw-wa-primary" type="submit">Get Access</button>
@@ -335,7 +336,8 @@ export function mountOverlay(opts: OverlayOpts) {
   const modal = root.querySelector('[data-role="modal"]') as HTMLDivElement;
   const modalStatus = root.querySelector('[data-role="modal-status"]') as HTMLDivElement;
   const tenantField = root.querySelector('[data-role="tenant-field"]') as HTMLDivElement;
-  const tenantSelect = tenantField.querySelector("select") as HTMLSelectElement;
+  const tenantInput = tenantField.querySelector('[data-role="tenant-input"]') as HTMLInputElement;
+  const tenantSelect = tenantField.querySelector('[data-role="tenant-select"]') as HTMLSelectElement;
   const loginForm = root.querySelector('[data-role="login-form"]') as HTMLFormElement;
   const log = root.querySelector('[data-role="log"]') as HTMLDivElement;
   const loginBtn = root.querySelector('[data-action="login"]') as HTMLButtonElement;
@@ -378,16 +380,20 @@ export function mountOverlay(opts: OverlayOpts) {
     const formData = new FormData(loginForm);
     const email = String(formData.get("email") || "").trim();
     const password = String(formData.get("password") || "").trim();
-    const tenantId = String(formData.get("tenantId") || "").trim() || null;
+    const tenantId = (tenantSelect.style.display === "none"
+      ? tenantInput.value
+      : tenantSelect.value) || "";
+    const normalizedTenantId = tenantId.trim() || null;
 
-    const res = await opts.onLogin({ email, password, tenantId });
+    const res = await opts.onLogin({ email, password, tenantId: normalizedTenantId });
     if (!res?.ok) {
       modalStatus.textContent = res?.error || "Login failed.";
       return;
     }
 
     if (res?.requiresTenantSelection) {
-      tenantField.style.display = "flex";
+      tenantInput.style.display = "none";
+      tenantSelect.style.display = "block";
       tenantSelect.innerHTML = "";
       for (const tenant of res.tenants || []) {
         const option = document.createElement("option");
@@ -395,6 +401,7 @@ export function mountOverlay(opts: OverlayOpts) {
         option.textContent = `${tenant.tenantName} (${tenant.role})`;
         tenantSelect.appendChild(option);
       }
+      tenantSelect.value = tenantSelect.options[0]?.value ?? "";
       modalStatus.textContent = "Select a tenant to continue.";
       return;
     }
