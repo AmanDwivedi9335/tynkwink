@@ -1,7 +1,16 @@
 import type { BgMessage } from "./common/types";
 import { getAuth, saveAuth } from "./common/storage";
 
-const DEFAULT_API_BASE = "http://locahost:4000/api";
+const DEFAULT_API_BASE = "http://localhost:4000";
+const API_PREFIX = "/api";
+
+function buildApiUrl(apiBase: string, path: string) {
+  const trimmed = apiBase.replace(/\/+$/, "");
+  if (trimmed.endsWith(API_PREFIX)) {
+    return `${trimmed}${path}`;
+  }
+  return `${trimmed}${API_PREFIX}${path}`;
+}
 
 chrome.runtime.onMessage.addListener((message: BgMessage, _sender, sendResponse) => {
   (async () => {
@@ -31,7 +40,7 @@ chrome.runtime.onMessage.addListener((message: BgMessage, _sender, sendResponse)
       if (message.type === "AUTH_LOGIN") {
         const auth = await getAuth();
         const apiBase = auth.apiBase || DEFAULT_API_BASE;
-        const url = `${apiBase}/api/auth/login`;
+        const url = buildApiUrl(apiBase, "/auth/login");
 
         let resp: Response;
         try {
@@ -98,7 +107,7 @@ chrome.runtime.onMessage.addListener((message: BgMessage, _sender, sendResponse)
         }
 
         // CHANGE HERE: Your backend route path
-        const url = `${auth.apiBase}/api/integrations/whatsapp-web/sync`;
+        const url = buildApiUrl(auth.apiBase, "/integrations/whatsapp-web/sync");
 
         const resp = await fetch(url, {
           method: "POST",
