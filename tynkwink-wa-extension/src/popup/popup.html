@@ -10,6 +10,10 @@
       button { width: 100%; padding: 10px; border-radius: 10px; border: none; background: #1c5aa6; color: white; cursor: pointer; margin-top: 12px; font-weight: 600; }
       .secondary { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #dce6f5; }
       .hint { font-size: 12px; color: #9aa7b6; margin-top: 8px; line-height: 1.4; }
+      .field { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #9aa7b6; }
+      .input { background: #1e1f22; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #f3f7ff; font-size: 13px; }
+      .row { display: flex; gap: 8px; }
+      .row button { margin-top: 0; }
       a { color: #6fb5ff; text-decoration: none; }
     </style>
   </head>
@@ -21,8 +25,15 @@
         Open <a href="https://web.whatsapp.com" target="_blank" rel="noreferrer">web.whatsapp.com</a>
         to access the CRM login overlay.
       </div>
+      <label class="field">
+        API Base URL
+        <input id="api-base" class="input" type="url" placeholder="https://api.tynkwink.com" />
+      </label>
+      <div class="row">
+        <button id="save-api">Save API Base</button>
+        <button id="clear" class="secondary">Clear saved credentials</button>
+      </div>
       <button id="open-wa">Open WhatsApp Web</button>
-      <button id="clear" class="secondary">Clear saved credentials</button>
       <div class="status" id="status"></div>
     </div>
 

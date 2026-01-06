@@ -5,7 +5,10 @@
   "description": "Sync WhatsApp Web chats to Tynkwink CRM",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
-    "https://web.whatsapp.com/*"
+    "https://web.whatsapp.com/*",
+    "https://*.tynkwink.com/*",
+    "https://tynkwink.com/*",
+    "http://localhost:4000/*"
   ],
   "background": {
     "service_worker": "dist/background.js",
