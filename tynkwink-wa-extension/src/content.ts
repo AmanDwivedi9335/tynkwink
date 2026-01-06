@@ -111,6 +111,18 @@ async function loginCrm(payload: { email: string; password: string; tenantId?: s
   return res;
 }
 
+async function loadSummary() {
+  const res = await chrome.runtime.sendMessage({ type: "EXTENSION_SUMMARY" });
+  return res;
+}
+
+function getChatSnapshot() {
+  return {
+    name: getChatTitle() || null,
+    phone: getPhoneE164BestEffort()
+  };
+}
+
 /**
  * WhatsApp Web is SPA; the DOM might not be ready immediately even at document_idle.
  * We mount overlay after main/header appear.
@@ -126,7 +138,9 @@ async function init() {
   mountOverlay({
     onSync: syncCurrentChat,
     onCheckAuth: checkAuth,
-    onLogin: loginCrm
+    onLogin: loginCrm,
+    onGetSummary: loadSummary,
+    onGetChatSnapshot: getChatSnapshot
   });
 }
 

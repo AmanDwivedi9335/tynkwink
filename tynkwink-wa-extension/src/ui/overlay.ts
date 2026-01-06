@@ -2,6 +2,8 @@ type OverlayOpts = {
   onSync: () => Promise<any>;
   onCheckAuth: () => Promise<any>;
   onLogin: (payload: { email: string; password: string; tenantId?: string | null }) => Promise<any>;
+  onGetSummary: () => Promise<any>;
+  onGetChatSnapshot: () => { name: string | null; phone: string | null };
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}) {
@@ -251,11 +253,11 @@ export function mountOverlay(opts: OverlayOpts) {
     <div class="tw-wa-topbar">
       <div class="tw-wa-logo">Tynkwink CRM</div>
       <div class="tw-wa-nav">
-        <span>All Chats (222)</span>
-        <span>Unread Chats (5)</span>
-        <span>Needs Reply (136)</span>
-        <span>Groups (20)</span>
-        <span>Pending Reminders (14)</span>
+        <span data-role="nav-all">All Chats (—)</span>
+        <span data-role="nav-unread">Unread Chats (—)</span>
+        <span data-role="nav-needs-reply">Needs Reply (—)</span>
+        <span data-role="nav-groups">Groups (—)</span>
+        <span data-role="nav-reminders">Pending Reminders (—)</span>
       </div>
       <div class="tw-wa-actions">
         <span class="tw-wa-auth-status">Checking CRM login...</span>
@@ -263,39 +265,31 @@ export function mountOverlay(opts: OverlayOpts) {
         <button class="tw-wa-pill" data-action="sync">Sync Chat</button>
       </div>
     </div>
-    <div class="tw-wa-pipeline">
-      <div class="tw-wa-stage" style="background:#ff914d;"><strong>43</strong><span>New Lead</span></div>
-      <div class="tw-wa-stage" style="background:#3f7ccf;"><strong>3</strong><span>Qualified</span></div>
-      <div class="tw-wa-stage" style="background:#a975c2;"><strong>2</strong><span>In Conversation</span></div>
-      <div class="tw-wa-stage" style="background:#4fb06a;"><strong>2</strong><span>Good Lead</span></div>
-      <div class="tw-wa-stage" style="background:#f05a59;"><strong>2</strong><span>Lead Won</span></div>
-      <div class="tw-wa-stage" style="background:#8165d5;"><strong>2</strong><span>No Response</span></div>
-      <div class="tw-wa-stage" style="background:#4db1d5;"><strong>2</strong><span>Deleted</span></div>
-    </div>
+    <div class="tw-wa-pipeline" data-role="pipeline"></div>
     <div class="tw-wa-panel">
       <h3>Personal Info</h3>
       <div class="tw-wa-field">
         <label>Name</label>
-        <div class="tw-wa-input">Samyak Golchha</div>
+        <div class="tw-wa-input" data-role="contact-name">Loading...</div>
       </div>
       <div class="tw-wa-field">
         <label>Phone</label>
-        <div class="tw-wa-input">+91 81871818389</div>
+        <div class="tw-wa-input" data-role="contact-phone">Loading...</div>
       </div>
       <div class="tw-wa-toggle">
-        <div class="tw-wa-input" style="flex:1">AI Auto-Reply Status: On</div>
+        <div class="tw-wa-input" style="flex:1" data-role="ai-status">AI Auto-Reply Status: --</div>
       </div>
       <div class="tw-wa-field">
         <label>Pipeline</label>
-        <div class="tw-wa-input">Leads</div>
+        <div class="tw-wa-input" data-role="pipeline-name">Loading...</div>
       </div>
       <div class="tw-wa-field">
         <label>Stage</label>
-        <div class="tw-wa-input">New Lead</div>
+        <div class="tw-wa-input" data-role="stage-name">Loading...</div>
       </div>
       <div class="tw-wa-field">
         <label>Source</label>
-        <div class="tw-wa-input">Extension</div>
+        <div class="tw-wa-input" data-role="source-name">Extension</div>
       </div>
       <div class="tw-wa-log" data-role="log"></div>
       <button class="tw-wa-sync" data-action="sync">Sync current chat</button>
@@ -333,6 +327,18 @@ export function mountOverlay(opts: OverlayOpts) {
   document.body.appendChild(root);
 
   const authStatus = root.querySelector(".tw-wa-auth-status") as HTMLSpanElement;
+  const navAll = root.querySelector('[data-role="nav-all"]') as HTMLSpanElement;
+  const navUnread = root.querySelector('[data-role="nav-unread"]') as HTMLSpanElement;
+  const navNeedsReply = root.querySelector('[data-role="nav-needs-reply"]') as HTMLSpanElement;
+  const navGroups = root.querySelector('[data-role="nav-groups"]') as HTMLSpanElement;
+  const navReminders = root.querySelector('[data-role="nav-reminders"]') as HTMLSpanElement;
+  const pipelineContainer = root.querySelector('[data-role="pipeline"]') as HTMLDivElement;
+  const contactName = root.querySelector('[data-role="contact-name"]') as HTMLDivElement;
+  const contactPhone = root.querySelector('[data-role="contact-phone"]') as HTMLDivElement;
+  const aiStatus = root.querySelector('[data-role="ai-status"]') as HTMLDivElement;
+  const pipelineName = root.querySelector('[data-role="pipeline-name"]') as HTMLDivElement;
+  const stageName = root.querySelector('[data-role="stage-name"]') as HTMLDivElement;
+  const sourceName = root.querySelector('[data-role="source-name"]') as HTMLDivElement;
   const modal = root.querySelector('[data-role="modal"]') as HTMLDivElement;
   const modalStatus = root.querySelector('[data-role="modal-status"]') as HTMLDivElement;
   const tenantField = root.querySelector('[data-role="tenant-field"]') as HTMLDivElement;
@@ -344,6 +350,65 @@ export function mountOverlay(opts: OverlayOpts) {
   const closeBtn = root.querySelector('[data-action="close"]') as HTMLButtonElement;
   const syncButtons = root.querySelectorAll('[data-action="sync"]');
   let isLoggingIn = false;
+  let isLoadingSummary = false;
+
+  const updateChatSnapshot = () => {
+    const snapshot = opts.onGetChatSnapshot();
+    contactName.textContent = snapshot?.name || "Unknown";
+    contactPhone.textContent = snapshot?.phone || "Not available";
+  };
+
+  const updateSummary = (summary: any) => {
+    if (!summary) return;
+    navAll.textContent = `All Chats (${summary.stats?.allChats ?? 0})`;
+    navUnread.textContent = `Unread Chats (${summary.stats?.unreadChats ?? 0})`;
+    navNeedsReply.textContent = `Needs Reply (${summary.stats?.needsReply ?? 0})`;
+    navGroups.textContent = `Groups (${summary.stats?.groups ?? 0})`;
+    navReminders.textContent = `Pending Reminders (${summary.stats?.pendingReminders ?? 0})`;
+
+    pipelineName.textContent = summary.pipeline?.name ?? "Leads";
+    const defaultStage =
+      summary.pipeline?.stages?.find((stage: any) => stage.id === summary.pipeline?.defaultStageId) ??
+      summary.pipeline?.stages?.[0];
+    stageName.textContent = defaultStage?.name ?? "Unknown";
+
+    aiStatus.textContent = `AI Auto-Reply Status: ${summary.features?.aiAutoReplyEnabled ? "On" : "Off"}`;
+    sourceName.textContent = "Extension";
+
+    pipelineContainer.innerHTML = "";
+    const stages = summary.pipeline?.stages ?? [];
+    stages.forEach((stage: any) => {
+      const stageEl = document.createElement("div");
+      stageEl.className = "tw-wa-stage";
+      stageEl.style.background = stage.color || "#64748b";
+      stageEl.innerHTML = `<strong>${stage.count ?? 0}</strong><span>${stage.name ?? "Stage"}</span>`;
+      pipelineContainer.appendChild(stageEl);
+    });
+
+    const canSync = Boolean(summary.permissions?.canSync);
+    syncButtons.forEach((button) => {
+      const btn = button as HTMLButtonElement;
+      btn.disabled = !canSync;
+      btn.title = canSync ? "" : "You do not have permission to sync.";
+    });
+  };
+
+  const refreshSummary = async () => {
+    if (isLoadingSummary) return;
+    isLoadingSummary = true;
+    log.textContent = "Loading CRM summary...";
+    try {
+      const res = await opts.onGetSummary();
+      if (!res?.ok) {
+        log.textContent = res?.error || "Unable to load CRM summary.";
+        return;
+      }
+      updateSummary(res?.summary);
+      log.textContent = "CRM summary synced.";
+    } finally {
+      isLoadingSummary = false;
+    }
+  };
 
   const openModal = () => {
     modal.classList.add("is-visible");
@@ -370,9 +435,13 @@ export function mountOverlay(opts: OverlayOpts) {
   };
 
   (async () => {
+    updateChatSnapshot();
     const res = await opts.onCheckAuth();
     const token = res?.auth?.token ?? null;
     setAuthState(token);
+    if (token) {
+      await refreshSummary();
+    }
   })();
 
   loginForm.onsubmit = async (event) => {
@@ -409,6 +478,7 @@ export function mountOverlay(opts: OverlayOpts) {
         }
         modalStatus.textContent = "Login successful. Credentials synced.";
         setAuthState(followUp?.auth?.token ?? null);
+        await refreshSummary();
         isLoggingIn = false;
         loginBtn.disabled = false;
         return;
@@ -431,6 +501,7 @@ export function mountOverlay(opts: OverlayOpts) {
 
     modalStatus.textContent = "Login successful. Credentials synced.";
     setAuthState(res?.auth?.token ?? null);
+    await refreshSummary();
     isLoggingIn = false;
     loginBtn.disabled = false;
   };
@@ -441,6 +512,7 @@ export function mountOverlay(opts: OverlayOpts) {
       try {
         const res = await opts.onSync();
         log.textContent = JSON.stringify(res, null, 2);
+        await refreshSummary();
       } catch (error: any) {
         log.textContent = `Sync failed: ${error?.message || "unknown error"}`;
       }

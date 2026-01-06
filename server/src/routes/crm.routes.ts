@@ -3,23 +3,10 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { prisma } from "../prisma";
 import { InboundSource } from "@prisma/client";
+import { ensureStages, stageColorMap, fallbackStageColor } from "../services/leadStages";
 
 const router = Router();
 
-const defaultStages = [
-  { name: "New Lead", color: "#f59e0b" },
-  { name: "Qualified", color: "#3b82f6" },
-  { name: "In Conversation", color: "#a855f7" },
-  { name: "Good Lead", color: "#22c55e" },
-  { name: "Lead Won", color: "#ef4444" },
-  { name: "No Response", color: "#6366f1" },
-  { name: "Deleted", color: "#06b6d4" },
-];
-
-const stageColorMap = defaultStages.reduce<Record<string, string>>((acc, stage) => {
-  acc[stage.name] = stage.color;
-  return acc;
-}, {});
 
 const leadSchema = z.object({
   name: z.string().trim().min(1, "Lead name is required"),
@@ -49,29 +36,6 @@ const leadSchema = z.object({
   ),
 });
 
-async function ensureStages(tenantId: string) {
-  let stages = await prisma.leadStage.findMany({
-    where: { tenantId, isDeleted: false },
-    orderBy: { position: "asc" },
-  });
-
-  if (stages.length === 0) {
-    await prisma.leadStage.createMany({
-      data: defaultStages.map((stage, index) => ({
-        tenantId,
-        name: stage.name,
-        position: index + 1,
-      })),
-    });
-
-    stages = await prisma.leadStage.findMany({
-      where: { tenantId, isDeleted: false },
-      orderBy: { position: "asc" },
-    });
-  }
-
-  return stages;
-}
 
 function formatLead(lead: {
   id: string;
@@ -133,7 +97,7 @@ router.get("/crm/pipeline", requireAuth, async (req, res) => {
     stages: stages.map((stage) => ({
       id: stage.id,
       name: stage.name,
-      color: stageColorMap[stage.name] ?? "#64748b",
+      color: stageColorMap[stage.name] ?? fallbackStageColor(stage.name),
     })),
     leads: leads.map((lead) => formatLead(lead)),
   });
