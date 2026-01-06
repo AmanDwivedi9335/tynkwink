@@ -207,11 +207,6 @@ export function mountOverlay(opts: OverlayOpts) {
         font-size: 12px;
         color: #9aa7b6;
       }
-      .tw-wa-modal-hint {
-        margin-top: 4px;
-        font-size: 11px;
-        color: #7f8fa4;
-      }
       .tw-wa-modal-actions {
         margin-top: 16px;
         display: flex;
@@ -320,11 +315,9 @@ export function mountOverlay(opts: OverlayOpts) {
             <label>Password</label>
             <input class="tw-wa-input" type="password" name="password" placeholder="Enter your password" required />
           </div>
-          <div class="tw-wa-modal-field" data-role="tenant-field">
-            <label>Tenant ID</label>
-            <input class="tw-wa-input" name="tenantId" list="tw-wa-tenant-options" placeholder="Enter tenant ID" />
-            <datalist id="tw-wa-tenant-options"></datalist>
-            <span class="tw-wa-modal-hint">Use the tenant ID from your CRM account.</span>
+          <div class="tw-wa-modal-field" data-role="tenant-field" style="display:none;">
+            <label>Tenant</label>
+            <select class="tw-wa-input" name="tenantId"></select>
           </div>
           <div class="tw-wa-modal-actions">
             <button class="tw-wa-primary" type="submit">Get Access</button>
@@ -342,8 +335,7 @@ export function mountOverlay(opts: OverlayOpts) {
   const modal = root.querySelector('[data-role="modal"]') as HTMLDivElement;
   const modalStatus = root.querySelector('[data-role="modal-status"]') as HTMLDivElement;
   const tenantField = root.querySelector('[data-role="tenant-field"]') as HTMLDivElement;
-  const tenantInput = tenantField.querySelector('input[name="tenantId"]') as HTMLInputElement;
-  const tenantOptions = tenantField.querySelector("#tw-wa-tenant-options") as HTMLDataListElement;
+  const tenantSelect = tenantField.querySelector("select") as HTMLSelectElement;
   const loginForm = root.querySelector('[data-role="login-form"]') as HTMLFormElement;
   const log = root.querySelector('[data-role="log"]') as HTMLDivElement;
   const loginBtn = root.querySelector('[data-action="login"]') as HTMLButtonElement;
@@ -395,18 +387,15 @@ export function mountOverlay(opts: OverlayOpts) {
     }
 
     if (res?.requiresTenantSelection) {
-      tenantOptions.innerHTML = "";
+      tenantField.style.display = "flex";
+      tenantSelect.innerHTML = "";
       for (const tenant of res.tenants || []) {
         const option = document.createElement("option");
         option.value = tenant.tenantId;
-        option.label = `${tenant.tenantName} (${tenant.role})`;
-        tenantOptions.appendChild(option);
+        option.textContent = `${tenant.tenantName} (${tenant.role})`;
+        tenantSelect.appendChild(option);
       }
-      if (!tenantInput.value) {
-        modalStatus.textContent = "Enter a tenant ID to continue.";
-      } else {
-        modalStatus.textContent = "Tenant required. Please retry login.";
-      }
+      modalStatus.textContent = "Select a tenant to continue.";
       return;
     }
 
