@@ -1,9 +1,7 @@
 // src/popup/popup.ts
-var apiBaseEl = document.getElementById("apiBase");
-var tenantIdEl = document.getElementById("tenantId");
-var tokenEl = document.getElementById("token");
 var statusEl = document.getElementById("status");
-var saveBtn = document.getElementById("save");
+var openWaBtn = document.getElementById("open-wa");
+var clearBtn = document.getElementById("clear");
 async function load() {
   const res = await chrome.runtime.sendMessage({ type: "AUTH_GET" });
   if (!res?.ok) {
@@ -11,20 +9,16 @@ async function load() {
     return;
   }
   const auth = res.auth;
-  apiBaseEl.value = auth.apiBase ?? "";
-  tenantIdEl.value = auth.tenantId ?? "";
-  tokenEl.value = auth.token ?? "";
-  statusEl.textContent = auth.token ? "Loaded existing settings." : "No settings saved yet.";
+  statusEl.textContent = auth.token ? "CRM credentials loaded." : "Not logged in yet.";
 }
-saveBtn.onclick = async () => {
-  statusEl.textContent = "Saving...";
-  const auth = {
-    apiBase: apiBaseEl.value.trim(),
-    tenantId: tenantIdEl.value.trim(),
-    token: tokenEl.value.trim()
-  };
+openWaBtn.onclick = () => {
+  chrome.tabs.create({ url: "https://web.whatsapp.com" });
+};
+clearBtn.onclick = async () => {
+  statusEl.textContent = "Clearing saved credentials...";
+  const auth = { apiBase: null, tenantId: null, token: null };
   const res = await chrome.runtime.sendMessage({ type: "AUTH_SAVE", auth });
-  statusEl.textContent = res?.ok ? "Saved." : `Save failed: ${res?.error || "unknown"}`;
+  statusEl.textContent = res?.ok ? "Cleared." : `Clear failed: ${res?.error || "unknown"}`;
 };
 load();
 //# sourceMappingURL=popup.js.map
