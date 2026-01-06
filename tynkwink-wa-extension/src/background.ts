@@ -1,6 +1,8 @@
 import type { BgMessage } from "./common/types";
 import { getAuth, saveAuth } from "./common/storage";
 
+const DEFAULT_API_BASE = "https://api.tynkwink.com";
+
 chrome.runtime.onMessage.addListener((message: BgMessage, _sender, sendResponse) => {
   (async () => {
     try {
@@ -26,10 +28,57 @@ chrome.runtime.onMessage.addListener((message: BgMessage, _sender, sendResponse)
         return;
       }
 
+      if (message.type === "AUTH_LOGIN") {
+        const auth = await getAuth();
+        const apiBase = auth.apiBase || DEFAULT_API_BASE;
+        const url = `${apiBase}/api/auth/login`;
+
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: message.payload.email,
+            password: message.payload.password,
+            tenantId: message.payload.tenantId || undefined
+          })
+        });
+
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          sendResponse({ ok: false, error: data?.message || "Login failed" });
+          return;
+        }
+
+        if (data?.requiresTenantSelection) {
+          sendResponse({
+            ok: true,
+            requiresTenantSelection: true,
+            tenants: data?.tenants ?? []
+          });
+          return;
+        }
+
+        await saveAuth({
+          apiBase,
+          token: data?.accessToken || null,
+          tenantId: data?.tenantId || null
+        });
+
+        sendResponse({
+          ok: true,
+          auth: {
+            apiBase,
+            token: data?.accessToken || null,
+            tenantId: data?.tenantId || null
+          }
+        });
+        return;
+      }
+
       if (message.type === "SYNC_CHAT") {
         const auth = await getAuth();
         if (!auth.apiBase || !auth.token || !auth.tenantId) {
-          sendResponse({ ok: false, error: "Not authenticated. Open extension popup and set API Base, Tenant ID, Token." });
+          sendResponse({ ok: false, error: "Not authenticated. Log in to Tynkwink CRM from the WhatsApp overlay." });
           return;
         }
 

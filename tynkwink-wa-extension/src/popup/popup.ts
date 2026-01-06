@@ -1,10 +1,8 @@
 import type { AuthState } from "../common/types";
 
-const apiBaseEl = document.getElementById("apiBase") as HTMLInputElement;
-const tenantIdEl = document.getElementById("tenantId") as HTMLInputElement;
-const tokenEl = document.getElementById("token") as HTMLInputElement;
 const statusEl = document.getElementById("status") as HTMLDivElement;
-const saveBtn = document.getElementById("save") as HTMLButtonElement;
+const openWaBtn = document.getElementById("open-wa") as HTMLButtonElement;
+const clearBtn = document.getElementById("clear") as HTMLButtonElement;
 
 async function load() {
   const res = await chrome.runtime.sendMessage({ type: "AUTH_GET" });
@@ -14,22 +12,18 @@ async function load() {
   }
 
   const auth = res.auth as AuthState;
-  apiBaseEl.value = auth.apiBase ?? "";
-  tenantIdEl.value = auth.tenantId ?? "";
-  tokenEl.value = auth.token ?? "";
-  statusEl.textContent = auth.token ? "Loaded existing settings." : "No settings saved yet.";
+  statusEl.textContent = auth.token ? "CRM credentials loaded." : "Not logged in yet.";
 }
 
-saveBtn.onclick = async () => {
-  statusEl.textContent = "Saving...";
-  const auth: AuthState = {
-    apiBase: apiBaseEl.value.trim(),
-    tenantId: tenantIdEl.value.trim(),
-    token: tokenEl.value.trim()
-  };
+openWaBtn.onclick = () => {
+  chrome.tabs.create({ url: "https://web.whatsapp.com" });
+};
 
+clearBtn.onclick = async () => {
+  statusEl.textContent = "Clearing saved credentials...";
+  const auth: AuthState = { apiBase: null, tenantId: null, token: null };
   const res = await chrome.runtime.sendMessage({ type: "AUTH_SAVE", auth });
-  statusEl.textContent = res?.ok ? "Saved." : `Save failed: ${res?.error || "unknown"}`;
+  statusEl.textContent = res?.ok ? "Cleared." : `Clear failed: ${res?.error || "unknown"}`;
 };
 
 load();

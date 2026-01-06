@@ -106,6 +106,11 @@ async function checkAuth() {
   return res;
 }
 
+async function loginCrm(payload: { email: string; password: string; tenantId?: string | null }) {
+  const res = await chrome.runtime.sendMessage({ type: "AUTH_LOGIN", payload });
+  return res;
+}
+
 /**
  * WhatsApp Web is SPA; the DOM might not be ready immediately even at document_idle.
  * We mount overlay after main/header appear.
@@ -120,7 +125,8 @@ async function init() {
 
   mountOverlay({
     onSync: syncCurrentChat,
-    onCheckAuth: checkAuth
+    onCheckAuth: checkAuth,
+    onLogin: loginCrm
   });
 }
 

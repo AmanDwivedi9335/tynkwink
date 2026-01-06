@@ -3,37 +3,28 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      body { font-family: system-ui; padding: 12px; width: 340px; }
-      label { font-size: 12px; color: #444; display: block; margin-top: 10px; }
-      input { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ddd; margin-top: 6px; }
-      button { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #111; background: white; cursor: pointer; margin-top: 12px; }
-      .hint { font-size: 12px; color: #666; margin-top: 8px; line-height: 1.3; }
-      .status { font-size: 12px; margin-top: 10px; color: #111; white-space: pre-wrap; }
-      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; font-size: 11px; }
+      body { font-family: system-ui; padding: 14px; width: 320px; background: #0f1113; color: #eef3ff; }
+      .title { font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+      .card { background: #161a1f; border: 1px solid rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; }
+      .status { font-size: 12px; color: #9bb0c9; margin-top: 10px; white-space: pre-wrap; }
+      button { width: 100%; padding: 10px; border-radius: 10px; border: none; background: #1c5aa6; color: white; cursor: pointer; margin-top: 12px; font-weight: 600; }
+      .secondary { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #dce6f5; }
+      .hint { font-size: 12px; color: #9aa7b6; margin-top: 8px; line-height: 1.4; }
+      a { color: #6fb5ff; text-decoration: none; }
     </style>
   </head>
   <body>
-    <div style="font-weight:700;">Tynkwink WhatsApp Sync</div>
-
-    <label>API Base</label>
-    <input id="apiBase" placeholder="https://api.tynkwink.com" />
-
-    <label>Tenant ID</label>
-    <input id="tenantId" placeholder="tenant_cuid_or_uuid" />
-
-    <label>JWT Access Token</label>
-    <input id="token" placeholder="Paste access token" />
-
-    <button id="save">Save</button>
-
-    <div class="hint">
-      Notes:
-      <br/>• Token should be short-lived.
-      <br/>• Backend should validate tenant from token claims (do not trust input).
-      <br/>• Overlay appears on <code>web.whatsapp.com</code>.
+    <div class="title">Tynkwink WhatsApp Sync</div>
+    <div class="card">
+      <div class="hint">
+        Login credentials are fetched automatically from your Tynkwink CRM account.
+        Open <a href="https://web.whatsapp.com" target="_blank" rel="noreferrer">web.whatsapp.com</a>
+        to access the CRM login overlay.
+      </div>
+      <button id="open-wa">Open WhatsApp Web</button>
+      <button id="clear" class="secondary">Clear saved credentials</button>
+      <div class="status" id="status"></div>
     </div>
-
-    <div class="status" id="status"></div>
 
     <script type="module" src="popup.js"></script>
   </body>
