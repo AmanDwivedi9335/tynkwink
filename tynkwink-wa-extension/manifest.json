@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Tynkwink WhatsApp Sync",
+  "version": "0.1.0",
+  "description": "Sync WhatsApp Web chats to Tynkwink CRM",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "https://web.whatsapp.com/*"
+  ],
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Tynkwink WA Sync",
+    "default_popup": "dist/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["dist/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
