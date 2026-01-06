@@ -30,7 +30,14 @@ export type AuthState = {
   tenantId: string | null;
 };
 
+export type LoginPayload = {
+  email: string;
+  password: string;
+  tenantId?: string | null;
+};
+
 export type BgMessage =
   | { type: "AUTH_SAVE"; auth: AuthState }
   | { type: "AUTH_GET" }
+  | { type: "AUTH_LOGIN"; payload: LoginPayload }
   | { type: "SYNC_CHAT"; payload: SyncPayload };
