@@ -36,6 +36,7 @@ type CrmStage = {
 type CrmLead = {
   id: string;
   stageId: string;
+  assigneeId?: string | null;
   personal: {
     name: string;
     phone: string;
@@ -65,6 +66,19 @@ type CrmPipelineResponse = {
   leads: CrmLead[];
 };
 
+type Assignee = {
+  id: string;
+  name: string;
+  role: string;
+};
+
+const assignees: Assignee[] = [
+  { id: "assignee-1", name: "Vijayant", role: "Sales Admin" },
+  { id: "assignee-2", name: "Simran Kaur", role: "Salesperson" },
+  { id: "assignee-3", name: "Karan Sethi", role: "Salesperson" },
+  { id: "assignee-4", name: "Priya Nair", role: "Sales Admin" },
+];
+
 const fallbackPipeline: CrmPipelineResponse = {
   stages: [
     { id: "stage-new", name: "New Lead", color: "#f59e0b" },
@@ -79,6 +93,7 @@ const fallbackPipeline: CrmPipelineResponse = {
     {
       id: "LD-1024",
       stageId: "stage-new",
+      assigneeId: "assignee-1",
       personal: {
         name: "Simran Kaur",
         phone: "+91 99112 77890",
@@ -105,6 +120,7 @@ const fallbackPipeline: CrmPipelineResponse = {
     {
       id: "LD-1028",
       stageId: "stage-new",
+      assigneeId: "assignee-2",
       personal: {
         name: "Manish Tiwari",
         phone: "+91 98340 11209",
@@ -131,6 +147,7 @@ const fallbackPipeline: CrmPipelineResponse = {
     {
       id: "LD-1031",
       stageId: "stage-qualified",
+      assigneeId: "assignee-3",
       personal: {
         name: "Karan Sethi",
         phone: "+91 98765 44120",
@@ -157,6 +174,7 @@ const fallbackPipeline: CrmPipelineResponse = {
     {
       id: "LD-1033",
       stageId: "stage-conversation",
+      assigneeId: "assignee-2",
       personal: {
         name: "Aisha Sharma",
         phone: "+91 99988 33441",
@@ -183,6 +201,7 @@ const fallbackPipeline: CrmPipelineResponse = {
     {
       id: "LD-1040",
       stageId: "stage-good",
+      assigneeId: "assignee-4",
       personal: {
         name: "Nitin Verma",
         phone: "+91 98220 55110",
@@ -209,6 +228,7 @@ const fallbackPipeline: CrmPipelineResponse = {
     {
       id: "LD-1044",
       stageId: "stage-won",
+      assigneeId: "assignee-1",
       personal: {
         name: "Priya Nair",
         phone: "+91 99001 22011",
@@ -235,6 +255,7 @@ const fallbackPipeline: CrmPipelineResponse = {
     {
       id: "LD-1048",
       stageId: "stage-no-response",
+      assigneeId: "assignee-3",
       personal: {
         name: "Rohan Das",
         phone: "+91 98110 45567",
@@ -261,6 +282,7 @@ const fallbackPipeline: CrmPipelineResponse = {
     {
       id: "LD-1052",
       stageId: "stage-deleted",
+      assigneeId: null,
       personal: {
         name: "Meera Kapoor",
         phone: "+91 98088 66770",
@@ -291,6 +313,7 @@ const columns = [
   { label: "ID", minWidth: 90 },
   { label: "Personal Details", minWidth: 220 },
   { label: "Additional Info", minWidth: 240 },
+  { label: "Assigned To", minWidth: 220 },
   { label: "Notes", minWidth: 240 },
   { label: "Auto Follow-up", minWidth: 220 },
   { label: "Call Tracker", minWidth: 200 },
@@ -315,6 +338,7 @@ export default function CrmPage() {
     createdAt: "",
     stageId: "",
     notes: "",
+    assigneeId: "",
   });
 
   useEffect(() => {
@@ -368,6 +392,14 @@ export default function CrmPage() {
     );
   };
 
+  const handleAssigneeChange = (leadId: string, nextAssigneeId: string) => {
+    setLeads((prev) =>
+      prev.map((lead) =>
+        lead.id === leadId ? { ...lead, assigneeId: nextAssigneeId || null } : lead
+      )
+    );
+  };
+
   const handleOpenAddLead = () => {
     setAddLeadError(null);
     setLeadForm({
@@ -378,6 +410,7 @@ export default function CrmPage() {
       createdAt: "",
       stageId: selectedStageId ?? stages[0]?.id ?? "",
       notes: "",
+      assigneeId: "",
     });
     setIsAddLeadOpen(true);
   };
@@ -410,7 +443,11 @@ export default function CrmPage() {
       };
 
       const response = await api.post<{ lead: CrmLead }>("/api/crm/leads", payload);
-      setLeads((prev) => [response.data.lead, ...prev]);
+      const newLead = {
+        ...response.data.lead,
+        assigneeId: leadForm.assigneeId || null,
+      };
+      setLeads((prev) => [newLead, ...prev]);
       if (!selectedStageId) {
         setSelectedStageId(response.data.lead.stageId);
       }
@@ -611,7 +648,7 @@ export default function CrmPage() {
         </Stack>
         <Divider />
         <TableContainer sx={{ overflowX: "auto" }}>
-          <Table sx={{ minWidth: 1200 }}>
+          <Table sx={{ minWidth: 1400 }}>
             <TableHead>
               <TableRow>
                 {columns.map((column) => (
@@ -622,8 +659,10 @@ export default function CrmPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredLeads.map((lead) => (
-                <TableRow key={lead.id} hover>
+              {filteredLeads.map((lead) => {
+                const assignee = assignees.find((item) => item.id === lead.assigneeId);
+                return (
+                  <TableRow key={lead.id} hover>
                   <TableCell>
                     <Typography fontWeight={700}>{lead.id}</Typography>
                   </TableCell>
@@ -644,6 +683,32 @@ export default function CrmPage() {
                       <Typography variant="body2" color="text.secondary">
                         {[lead.company.size, lead.company.location].filter(Boolean).join(" • ") || "—"}
                       </Typography>
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <Stack spacing={1}>
+                      <Box>
+                        <Typography fontWeight={600}>{assignee?.name ?? "Unassigned"}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {assignee?.role ?? "—"}
+                        </Typography>
+                      </Box>
+                      <Select
+                        size="small"
+                        displayEmpty
+                        value={lead.assigneeId ?? ""}
+                        onChange={(event) => handleAssigneeChange(lead.id, event.target.value)}
+                        sx={{ minWidth: 180, borderRadius: 2 }}
+                      >
+                        <MenuItem value="">
+                          <em>Unassigned</em>
+                        </MenuItem>
+                        {assignees.map((assignee) => (
+                          <MenuItem key={assignee.id} value={assignee.id}>
+                            {assignee.name} ({assignee.role})
+                          </MenuItem>
+                        ))}
+                      </Select>
                     </Stack>
                   </TableCell>
                   <TableCell>
@@ -697,7 +762,8 @@ export default function CrmPage() {
                     </Select>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               {!filteredLeads.length ? (
                 <TableRow>
                   <TableCell colSpan={columns.length}>
@@ -770,6 +836,21 @@ export default function CrmPage() {
               value={leadForm.notes}
               onChange={(event) => setLeadForm((prev) => ({ ...prev, notes: event.target.value }))}
             />
+            <TextField
+              select
+              label="Assign to"
+              value={leadForm.assigneeId}
+              onChange={(event) => setLeadForm((prev) => ({ ...prev, assigneeId: event.target.value }))}
+            >
+              <MenuItem value="">
+                <em>Unassigned</em>
+              </MenuItem>
+              {assignees.map((assignee) => (
+                <MenuItem key={assignee.id} value={assignee.id}>
+                  {assignee.name} ({assignee.role})
+                </MenuItem>
+              ))}
+            </TextField>
             {addLeadError ? (
               <Typography variant="body2" color="error">
                 {addLeadError}
