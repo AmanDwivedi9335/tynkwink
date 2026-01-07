@@ -32,6 +32,17 @@ const normalizePhone = (value: string | null | undefined) => {
   return normalized;
 };
 
+const normalizePhoneFromId = (value: string | null | undefined) => {
+  if (!value) return null;
+  const atIndex = value.indexOf("@");
+  if (atIndex > 0) {
+    const beforeAt = value.slice(0, atIndex);
+    const normalized = normalizePhone(beforeAt);
+    if (normalized) return normalized;
+  }
+  return normalizePhone(value);
+};
+
 const extractTextCandidates = (root: Element | null) => {
   if (!root) return [];
   const candidates = new Set<string>();
@@ -50,6 +61,26 @@ const extractTextCandidates = (root: Element | null) => {
     addCandidate(node.getAttribute("title"));
     addCandidate(node.getAttribute("aria-label"));
   });
+
+  return Array.from(candidates);
+};
+
+const extractAttributeCandidates = (root: Element | null, attributes: string[]) => {
+  if (!root) return [];
+  const candidates = new Set<string>();
+  const addCandidate = (value: string | null) => {
+    if (!value) return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    candidates.add(trimmed);
+  };
+
+  for (const attribute of attributes) {
+    addCandidate(root.getAttribute(attribute));
+    root.querySelectorAll(`[${attribute}]`).forEach((node) => {
+      addCandidate(node.getAttribute(attribute));
+    });
+  }
 
   return Array.from(candidates);
 };
@@ -80,19 +111,31 @@ function getChatTitle(): string {
 function getPhoneE164BestEffort(): string | null {
   const header = document.querySelector("header");
   const selectedChat = document.querySelector('[aria-selected="true"]');
+  const attributeNames = ["data-id", "data-chat-id", "data-user-id", "id", "title", "aria-label"];
   const candidateSources = [
     ...extractTextCandidates(header),
     ...extractTextCandidates(selectedChat),
+    ...extractAttributeCandidates(header, attributeNames),
+    ...extractAttributeCandidates(selectedChat, attributeNames),
   ];
 
   for (const candidate of candidateSources) {
-    const normalized = normalizePhone(candidate);
+    const normalized = normalizePhoneFromId(candidate);
     if (normalized) return normalized;
   }
 
+  const telLink = document.querySelector("a[href^='tel:']") as HTMLAnchorElement | null;
+  const telValue = telLink?.getAttribute("href")?.replace(/^tel:/i, "");
+  const telPhone = normalizePhone(telValue);
+  if (telPhone) return telPhone;
+
   const dataId =
-    selectedChat?.getAttribute("data-id") || header?.getAttribute("data-id") || selectedChat?.closest("[data-id]")?.getAttribute("data-id");
-  const dataIdPhone = normalizePhone(dataId);
+    selectedChat?.getAttribute("data-id") ||
+    header?.getAttribute("data-id") ||
+    selectedChat?.closest("[data-id]")?.getAttribute("data-id") ||
+    selectedChat?.querySelector("[data-id]")?.getAttribute("data-id") ||
+    header?.querySelector("[data-id]")?.getAttribute("data-id");
+  const dataIdPhone = normalizePhoneFromId(dataId);
   if (dataIdPhone) return dataIdPhone;
 
   try {
