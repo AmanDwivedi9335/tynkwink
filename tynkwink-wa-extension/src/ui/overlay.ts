@@ -563,11 +563,22 @@ export function mountOverlay(opts: OverlayOpts) {
             </div>
           </div>
           <div class="tw-wa-section">
-            <button class="tw-wa-collapsible-toggle" data-action="toggle-additional" aria-expanded="false">
+            <button
+              class="tw-wa-collapsible-toggle"
+              data-action="toggle-additional"
+              aria-expanded="false"
+              aria-controls="tw-wa-additional-info"
+              type="button"
+            >
               <span class="tw-wa-section-header">Additional Info</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
             </button>
-            <div class="tw-wa-collapsible-content" data-role="additional-content">
+            <div
+              class="tw-wa-collapsible-content"
+              data-role="additional-content"
+              id="tw-wa-additional-info"
+              hidden
+            >
               <div class="tw-wa-field">
                 <label>Email</label>
                 <input class="tw-wa-input" data-role="contact-email" placeholder="Enter the Email" />
@@ -584,11 +595,21 @@ export function mountOverlay(opts: OverlayOpts) {
             </div>
           </div>
           <div class="tw-wa-section">
-            <button class="tw-wa-collapsible-toggle" data-action="toggle-activity" aria-expanded="true">
+            <button
+              class="tw-wa-collapsible-toggle"
+              data-action="toggle-activity"
+              aria-expanded="true"
+              aria-controls="tw-wa-activity-history"
+              type="button"
+            >
               <span class="tw-wa-section-header">Activity History</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
             </button>
-            <div class="tw-wa-collapsible-content is-open" data-role="activity-content">
+            <div
+              class="tw-wa-collapsible-content is-open"
+              data-role="activity-content"
+              id="tw-wa-activity-history"
+            >
               <label class="tw-wa-field" style="grid-template-columns:1fr; gap:6px;">
                 <span style="color:#9aa7b6;">Notes</span>
                 <textarea class="tw-wa-textarea" placeholder="Take a note for this chat."></textarea>
@@ -772,8 +793,10 @@ export function mountOverlay(opts: OverlayOpts) {
 
   const toggleCollapsible = (toggle: HTMLButtonElement, content: HTMLElement) => {
     const isExpanded = toggle.getAttribute("aria-expanded") === "true";
-    toggle.setAttribute("aria-expanded", String(!isExpanded));
-    content.classList.toggle("is-open", !isExpanded);
+    const nextExpanded = !isExpanded;
+    toggle.setAttribute("aria-expanded", String(nextExpanded));
+    content.classList.toggle("is-open", nextExpanded);
+    content.toggleAttribute("hidden", !nextExpanded);
   };
 
   additionalToggle.addEventListener("click", () => toggleCollapsible(additionalToggle, additionalContent));
