@@ -59,42 +59,16 @@ const pickBestText = (candidates: string[]) => {
   return candidates.sort((a, b) => b.length - a.length)[0] || null;
 };
 
-const pickFirstMatchText = (selectors: string[]) => {
-  for (const selector of selectors) {
-    const element = document.querySelector(selector);
-    if (!element) continue;
-    const text = pickBestText(extractTextCandidates(element));
-    if (text) return text;
-  }
-  return null;
-};
-
-const extractPhoneFromDataId = (dataId: string | null | undefined) => {
-  if (!dataId) return null;
-  const match = dataId.match(/(\d{7,})@c\.us/);
-  if (match) return normalizePhone(match[1]);
-  return normalizePhone(dataId);
-};
-
 function getChatTitle(): string {
   // Strategy:
   // 1) find a header area
   // 2) choose the most prominent text node
-  const headerTitle = pickFirstMatchText([
-    '[data-testid="conversation-info-header-chat-title"]',
-    'header [title]',
-    "header [aria-label]",
-    'header [dir="auto"]',
-  ]);
+  const header = document.querySelector("header");
+  const headerTitle = pickBestText(extractTextCandidates(header));
   if (headerTitle) return headerTitle;
 
   const selectedChat = document.querySelector('[aria-selected="true"]');
-  const selectedTitle =
-    pickFirstMatchText([
-      '[aria-selected="true"] [title]',
-      '[aria-selected="true"] [dir="auto"]',
-      '[aria-selected="true"] [aria-label]',
-    ]) ?? pickBestText(extractTextCandidates(selectedChat));
+  const selectedTitle = pickBestText(extractTextCandidates(selectedChat));
   return selectedTitle || "Unknown";
 }
 
@@ -117,10 +91,8 @@ function getPhoneE164BestEffort(): string | null {
   }
 
   const dataId =
-    selectedChat?.getAttribute("data-id") ||
-    header?.getAttribute("data-id") ||
-    selectedChat?.closest("[data-id]")?.getAttribute("data-id");
-  const dataIdPhone = extractPhoneFromDataId(dataId);
+    selectedChat?.getAttribute("data-id") || header?.getAttribute("data-id") || selectedChat?.closest("[data-id]")?.getAttribute("data-id");
+  const dataIdPhone = normalizePhone(dataId);
   if (dataIdPhone) return dataIdPhone;
 
   try {

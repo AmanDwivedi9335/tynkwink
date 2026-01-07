@@ -1220,7 +1220,6 @@ function mountOverlay(opts) {
     window.addEventListener("resize", updateOverlayBounds);
     setInterval(() => {
       ensureHeaderObserver();
-      updateChatSnapshot();
       updateOverlayBounds();
     }, 1e3);
     const res = await opts.onCheckAuth();
@@ -1346,35 +1345,12 @@ var pickBestText = (candidates) => {
   if (!candidates.length) return null;
   return candidates.sort((a, b) => b.length - a.length)[0] || null;
 };
-var pickFirstMatchText = (selectors) => {
-  for (const selector of selectors) {
-    const element = document.querySelector(selector);
-    if (!element) continue;
-    const text = pickBestText(extractTextCandidates(element));
-    if (text) return text;
-  }
-  return null;
-};
-var extractPhoneFromDataId = (dataId) => {
-  if (!dataId) return null;
-  const match = dataId.match(/(\d{7,})@c\.us/);
-  if (match) return normalizePhone(match[1]);
-  return normalizePhone(dataId);
-};
 function getChatTitle() {
-  const headerTitle = pickFirstMatchText([
-    '[data-testid="conversation-info-header-chat-title"]',
-    "header [title]",
-    "header [aria-label]",
-    'header [dir="auto"]'
-  ]);
+  const header = document.querySelector("header");
+  const headerTitle = pickBestText(extractTextCandidates(header));
   if (headerTitle) return headerTitle;
   const selectedChat = document.querySelector('[aria-selected="true"]');
-  const selectedTitle = pickFirstMatchText([
-    '[aria-selected="true"] [title]',
-    '[aria-selected="true"] [dir="auto"]',
-    '[aria-selected="true"] [aria-label]'
-  ]) ?? pickBestText(extractTextCandidates(selectedChat));
+  const selectedTitle = pickBestText(extractTextCandidates(selectedChat));
   return selectedTitle || "Unknown";
 }
 function getPhoneE164BestEffort() {
@@ -1389,7 +1365,7 @@ function getPhoneE164BestEffort() {
     if (normalized) return normalized;
   }
   const dataId = selectedChat?.getAttribute("data-id") || header?.getAttribute("data-id") || selectedChat?.closest("[data-id]")?.getAttribute("data-id");
-  const dataIdPhone = extractPhoneFromDataId(dataId);
+  const dataIdPhone = normalizePhone(dataId);
   if (dataIdPhone) return dataIdPhone;
   try {
     const url = new URL(location.href);
