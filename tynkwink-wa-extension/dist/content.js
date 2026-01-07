@@ -27,21 +27,18 @@ function mountOverlay(opts) {
       }
       body.tw-wa-overlay-active {
         padding-top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
-        padding-right: var(--tw-wa-panel-width);
+        padding-right: var(--tw-wa-panel-effective-width);
         box-sizing: border-box;
+      }
+      body.tw-wa-overlay-active.tw-wa-panel-collapsed {
+        padding-right: 0;
       }
       body.tw-wa-overlay-active header {
         top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
-        right: var(--tw-wa-panel-width);
-        width: calc(100% - var(--tw-wa-panel-width));
-        box-sizing: border-box;
       }
       body.tw-wa-overlay-active main {
         top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
         height: calc(100% - var(--tw-wa-topbar-height) - var(--tw-wa-pipeline-height));
-        right: var(--tw-wa-panel-width);
-        width: calc(100% - var(--tw-wa-panel-width));
-        box-sizing: border-box;
       }
       body.tw-wa-overlay-active #app {
         min-height: calc(100vh - var(--tw-wa-topbar-height) - var(--tw-wa-pipeline-height));
@@ -52,11 +49,20 @@ function mountOverlay(opts) {
           --tw-wa-panel-width: 320px;
         }
       }
+      #tw-wa-overlay-root {
+        --tw-wa-app-left: 0px;
+        --tw-wa-app-top: 0px;
+        --tw-wa-app-right: 0px;
+        --tw-wa-app-bottom: 0px;
+        --tw-wa-app-width: 100vw;
+        --tw-wa-app-height: 100vh;
+        --tw-wa-panel-effective-width: var(--tw-wa-panel-width);
+      }
       .tw-wa-topbar {
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
+        top: var(--tw-wa-app-top);
+        left: var(--tw-wa-app-left);
+        right: var(--tw-wa-app-right);
         height: var(--tw-wa-topbar-height);
         background: linear-gradient(180deg, #111, #1b1b1b);
         border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -92,6 +98,23 @@ function mountOverlay(opts) {
         align-items: center;
         gap: 10px;
       }
+      .tw-wa-icon-button {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(18, 22, 30, 0.7);
+        color: #9fd3ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      .tw-wa-icon-button svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+      }
       .tw-wa-pill {
         border: 1px solid rgba(96, 181, 255, 0.6);
         color: #e3f1ff;
@@ -107,9 +130,9 @@ function mountOverlay(opts) {
       }
       .tw-wa-pipeline {
         position: fixed;
-        top: var(--tw-wa-topbar-height);
-        left: 0;
-        right: var(--tw-wa-panel-width);
+        top: calc(var(--tw-wa-app-top) + var(--tw-wa-topbar-height));
+        left: var(--tw-wa-app-left);
+        right: calc(var(--tw-wa-panel-effective-width) + var(--tw-wa-app-right));
         height: var(--tw-wa-pipeline-height);
         display: grid;
         grid-template-columns: repeat(7, 1fr);
@@ -134,16 +157,20 @@ function mountOverlay(opts) {
       }
       .tw-wa-panel {
         position: fixed;
-        top: var(--tw-wa-topbar-height);
-        right: 0;
-        width: var(--tw-wa-panel-width);
-        bottom: 0;
+        top: calc(var(--tw-wa-app-top) + var(--tw-wa-topbar-height));
+        right: var(--tw-wa-app-right);
+        width: var(--tw-wa-panel-effective-width);
+        bottom: var(--tw-wa-app-bottom);
         background: #151515;
         border-left: 1px solid rgba(255,255,255,0.08);
         color: #e9f2ff;
         display: flex;
         flex-direction: column;
         pointer-events: auto;
+        transition: transform 0.25s ease;
+      }
+      #tw-wa-overlay-root.tw-wa-panel-collapsed .tw-wa-panel {
+        transform: translateX(100%);
       }
       .tw-wa-panel-tabs {
         display: grid;
@@ -228,6 +255,11 @@ function mountOverlay(opts) {
       }
       .tw-wa-field label {
         color: #e0e6f0;
+      }
+      .tw-wa-field.tw-wa-field-stack {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        align-items: start;
       }
       .tw-wa-input,
       .tw-wa-select,
@@ -330,6 +362,65 @@ function mountOverlay(opts) {
         border-radius: 8px;
         cursor: pointer;
         font-size: 12px;
+      }
+      .tw-wa-btn-primary {
+        border: none;
+        background: #1c5aa6;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .tw-wa-btn-primary[disabled],
+      .tw-wa-btn-secondary[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .tw-wa-lead-status {
+        background: rgba(17, 20, 25, 0.7);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tw-wa-lead-status-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #e0e6f0;
+      }
+      .tw-wa-status-pill {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(59, 130, 246, 0.15);
+        color: #93c5fd;
+        border: 1px solid rgba(59, 130, 246, 0.4);
+      }
+      .tw-wa-status-pill.is-success {
+        background: rgba(22, 163, 74, 0.15);
+        color: #86efac;
+        border-color: rgba(22, 163, 74, 0.5);
+      }
+      .tw-wa-status-pill.is-warning {
+        background: rgba(234, 179, 8, 0.15);
+        color: #fde68a;
+        border-color: rgba(234, 179, 8, 0.5);
+      }
+      .tw-wa-status-body {
+        font-size: 12px;
+        color: #b3bfce;
+        line-height: 1.4;
+      }
+      .tw-wa-status-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
       }
       .tw-wa-reminder-list,
       .tw-wa-quick-list {
@@ -482,6 +573,15 @@ function mountOverlay(opts) {
         <span data-role="nav-reminders">Pending Reminders (\u2014)</span>
       </div>
       <div class="tw-wa-actions">
+        <button
+          class="tw-wa-icon-button"
+          type="button"
+          data-action="toggle-panel"
+          aria-expanded="true"
+          title="Toggle panel"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+        </button>
         <span class="tw-wa-auth-status">Checking CRM login...</span>
         <button class="tw-wa-pill" data-action="login">Login</button>
         <button class="tw-wa-pill" data-action="sync">Sync Chat</button>
@@ -521,6 +621,23 @@ function mountOverlay(opts) {
                 <button class="tw-wa-btn-secondary" data-action="copy-phone">Copy</button>
               </div>
             </div>
+            <div class="tw-wa-field tw-wa-field-stack">
+              <div class="tw-wa-lead-status">
+                <div class="tw-wa-lead-status-header">
+                  <span>Lead Status</span>
+                  <span class="tw-wa-status-pill" data-role="lead-status-pill">Checking</span>
+                </div>
+                <div class="tw-wa-status-body" data-role="lead-status-body">
+                  Waiting for chat details...
+                </div>
+                <div class="tw-wa-status-actions" data-role="lead-status-actions">
+                  <button class="tw-wa-btn-primary" type="button" data-action="create-lead">Create Lead</button>
+                  <button class="tw-wa-btn-secondary" type="button" data-action="send-inbox">
+                    Send to Lead Inbox
+                  </button>
+                </div>
+              </div>
+            </div>
             <div class="tw-wa-field">
               <label>AI Auto-Reply</label>
               <div class="tw-wa-inline" style="justify-content:space-between;">
@@ -549,11 +666,22 @@ function mountOverlay(opts) {
             </div>
           </div>
           <div class="tw-wa-section">
-            <button class="tw-wa-collapsible-toggle" data-action="toggle-additional" aria-expanded="false">
+            <button
+              class="tw-wa-collapsible-toggle"
+              data-action="toggle-additional"
+              aria-expanded="false"
+              aria-controls="tw-wa-additional-info"
+              type="button"
+            >
               <span class="tw-wa-section-header">Additional Info</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
             </button>
-            <div class="tw-wa-collapsible-content" data-role="additional-content">
+            <div
+              class="tw-wa-collapsible-content"
+              data-role="additional-content"
+              id="tw-wa-additional-info"
+              hidden
+            >
               <div class="tw-wa-field">
                 <label>Email</label>
                 <input class="tw-wa-input" data-role="contact-email" placeholder="Enter the Email" />
@@ -570,11 +698,21 @@ function mountOverlay(opts) {
             </div>
           </div>
           <div class="tw-wa-section">
-            <button class="tw-wa-collapsible-toggle" data-action="toggle-activity" aria-expanded="true">
+            <button
+              class="tw-wa-collapsible-toggle"
+              data-action="toggle-activity"
+              aria-expanded="true"
+              aria-controls="tw-wa-activity-history"
+              type="button"
+            >
               <span class="tw-wa-section-header">Activity History</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
             </button>
-            <div class="tw-wa-collapsible-content is-open" data-role="activity-content">
+            <div
+              class="tw-wa-collapsible-content is-open"
+              data-role="activity-content"
+              id="tw-wa-activity-history"
+            >
               <label class="tw-wa-field" style="grid-template-columns:1fr; gap:6px;">
                 <span style="color:#9aa7b6;">Notes</span>
                 <textarea class="tw-wa-textarea" placeholder="Take a note for this chat."></textarea>
@@ -663,6 +801,11 @@ function mountOverlay(opts) {
   const stageSelect = root.querySelector('[data-role="stage-select"]');
   const sequenceLabel = root.querySelector('[data-role="sequence"]');
   const sourceName = root.querySelector('[data-role="source-name"]');
+  const leadStatusPill = root.querySelector('[data-role="lead-status-pill"]');
+  const leadStatusBody = root.querySelector('[data-role="lead-status-body"]');
+  const leadStatusActions = root.querySelector('[data-role="lead-status-actions"]');
+  const createLeadButton = root.querySelector('[data-action="create-lead"]');
+  const sendInboxButton = root.querySelector('[data-action="send-inbox"]');
   const modal = root.querySelector('[data-role="modal"]');
   const modalStatus = root.querySelector('[data-role="modal-status"]');
   const tenantField = root.querySelector('[data-role="tenant-field"]');
@@ -682,11 +825,49 @@ function mountOverlay(opts) {
   const reminderList = root.querySelector('[data-role="reminder-list"]');
   const quickList = root.querySelector('[data-role="quick-list"]');
   const copyPhoneButton = root.querySelector('[data-action="copy-phone"]');
+  const panelToggleButton = root.querySelector('[data-action="toggle-panel"]');
   let isLoggingIn = false;
   let isLoadingSummary = false;
+  let isPanelCollapsed = false;
+  let isCheckingLead = false;
+  let lastLeadPhone = null;
+  let lastSummaryStages = [];
   let lastSnapshot = { name: null, phone: null };
   let headerObserver = null;
   let observedHeader = null;
+  const getPanelWidth = () => {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue("--tw-wa-panel-width");
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) ? parsed : 360;
+  };
+  const updateOverlayBounds = () => {
+    const appRoot = document.querySelector("#app");
+    const rect = appRoot?.getBoundingClientRect() ?? {
+      left: 0,
+      top: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+      width: window.innerWidth,
+      height: window.innerHeight
+    };
+    const panelWidth = isPanelCollapsed ? 0 : Math.min(rect.width || window.innerWidth, getPanelWidth());
+    root.style.setProperty("--tw-wa-app-left", `${rect.left}px`);
+    root.style.setProperty("--tw-wa-app-top", `${rect.top}px`);
+    root.style.setProperty("--tw-wa-app-right", `${Math.max(0, window.innerWidth - rect.right)}px`);
+    root.style.setProperty("--tw-wa-app-bottom", `${Math.max(0, window.innerHeight - rect.bottom)}px`);
+    root.style.setProperty("--tw-wa-app-width", `${rect.width || window.innerWidth}px`);
+    root.style.setProperty("--tw-wa-app-height", `${rect.height || window.innerHeight}px`);
+    root.style.setProperty("--tw-wa-panel-effective-width", `${panelWidth}px`);
+  };
+  const setPanelCollapsed = (collapsed) => {
+    isPanelCollapsed = collapsed;
+    root.classList.toggle("tw-wa-panel-collapsed", collapsed);
+    document.documentElement.classList.toggle("tw-wa-panel-collapsed", collapsed);
+    document.body?.classList.toggle("tw-wa-panel-collapsed", collapsed);
+    panelToggleButton.setAttribute("aria-expanded", String(!collapsed));
+    panelToggleButton.title = collapsed ? "Show panel" : "Hide panel";
+    updateOverlayBounds();
+  };
   const updateChatSnapshot = () => {
     const snapshot = opts.onGetChatSnapshot();
     const nextName = snapshot?.name || null;
@@ -696,6 +877,7 @@ function mountOverlay(opts) {
     contactName.value = nextName || "";
     contactPhone.value = nextPhone || "";
     contactCreated.value = (/* @__PURE__ */ new Date()).toLocaleString();
+    refreshLeadStatus();
   };
   const ensureHeaderObserver = () => {
     const header = document.querySelector("header");
@@ -721,10 +903,15 @@ function mountOverlay(opts) {
       setTab(button.dataset.tab || "personal");
     });
   });
+  panelToggleButton.addEventListener("click", () => {
+    setPanelCollapsed(!isPanelCollapsed);
+  });
   const toggleCollapsible = (toggle, content) => {
     const isExpanded = toggle.getAttribute("aria-expanded") === "true";
-    toggle.setAttribute("aria-expanded", String(!isExpanded));
-    content.classList.toggle("is-open", !isExpanded);
+    const nextExpanded = !isExpanded;
+    toggle.setAttribute("aria-expanded", String(nextExpanded));
+    content.classList.toggle("is-open", nextExpanded);
+    content.toggleAttribute("hidden", !nextExpanded);
   };
   additionalToggle.addEventListener("click", () => toggleCollapsible(additionalToggle, additionalContent));
   activityToggle.addEventListener("click", () => toggleCollapsible(activityToggle, activityContent));
@@ -740,8 +927,180 @@ function mountOverlay(opts) {
       copyPhoneButton.textContent = "Unable";
     }
   });
+  contactPhone.addEventListener("change", () => {
+    refreshLeadStatus();
+  });
+  createLeadButton.addEventListener("click", async () => {
+    const name = contactName.value.trim() || "WhatsApp Lead";
+    const phone = contactPhone.value.trim();
+    if (!phone) {
+      setLeadStatus({
+        status: "error",
+        message: "Phone number is required to create a lead.",
+        showActions: true
+      });
+      return;
+    }
+    createLeadButton.disabled = true;
+    sendInboxButton.disabled = true;
+    setLeadStatus({ status: "checking", message: "Creating lead in CRM...", showActions: false });
+    const payload = {
+      name,
+      phone,
+      email: contactEmail.value.trim() || void 0,
+      company: contactCompany.value.trim() || void 0,
+      stageId: stageSelect.value || void 0
+    };
+    const res = await chrome.runtime.sendMessage({ type: "CREATE_LEAD", payload });
+    if (!res?.ok) {
+      setLeadStatus({
+        status: "error",
+        message: res?.error || "Unable to create lead.",
+        showActions: true
+      });
+      createLeadButton.disabled = false;
+      sendInboxButton.disabled = false;
+      return;
+    }
+    await refreshSummary();
+    createLeadButton.disabled = false;
+    sendInboxButton.disabled = false;
+  });
+  sendInboxButton.addEventListener("click", async () => {
+    const name = contactName.value.trim() || "WhatsApp Lead";
+    const phone = contactPhone.value.trim();
+    if (!phone) {
+      setLeadStatus({
+        status: "error",
+        message: "Phone number is required to send to Lead Inbox.",
+        showActions: true
+      });
+      return;
+    }
+    sendInboxButton.disabled = true;
+    createLeadButton.disabled = true;
+    setLeadStatus({ status: "checking", message: "Sending to Lead Inbox...", showActions: false });
+    const stageName = lastSummaryStages.find((stage) => stage.id === stageSelect.value)?.name;
+    const payload = {
+      name,
+      phone,
+      email: contactEmail.value.trim() || void 0,
+      company: contactCompany.value.trim() || void 0,
+      notes: `WhatsApp chat import for ${name}`,
+      preferredStage: stageName
+    };
+    const res = await chrome.runtime.sendMessage({ type: "CREATE_LEAD_INBOX", payload });
+    if (!res?.ok) {
+      setLeadStatus({
+        status: "error",
+        message: res?.error || "Unable to send to Lead Inbox.",
+        showActions: true
+      });
+      sendInboxButton.disabled = false;
+      createLeadButton.disabled = false;
+      return;
+    }
+    await refreshSummary();
+    sendInboxButton.disabled = false;
+    createLeadButton.disabled = false;
+  });
   const setEmptyList = (container, message) => {
     container.innerHTML = `<div class="tw-wa-empty">${message}</div>`;
+  };
+  const setLeadStatus = (params) => {
+    leadStatusBody.textContent = params.message;
+    leadStatusActions.style.display = params.showActions ? "flex" : "none";
+    leadStatusPill.classList.remove("is-success", "is-warning");
+    if (params.status === "lead") {
+      leadStatusPill.textContent = "In CRM";
+      leadStatusPill.classList.add("is-success");
+    } else if (params.status === "inbox") {
+      leadStatusPill.textContent = "In Lead Inbox";
+      leadStatusPill.classList.add("is-warning");
+    } else if (params.status === "checking") {
+      leadStatusPill.textContent = "Checking";
+    } else if (params.status === "none") {
+      leadStatusPill.textContent = "Not Found";
+    } else if (params.status === "error") {
+      leadStatusPill.textContent = "Error";
+    } else {
+      leadStatusPill.textContent = "Idle";
+    }
+  };
+  const updateContactFields = (payload) => {
+    if (payload.name) contactName.value = payload.name;
+    if (payload.phone) contactPhone.value = payload.phone;
+    if (payload.email) contactEmail.value = payload.email;
+    if (payload.company) contactCompany.value = payload.company;
+    if (payload.stageId) stageSelect.value = payload.stageId;
+  };
+  const refreshLeadStatus = async () => {
+    const phone = contactPhone.value.trim();
+    if (!phone) {
+      lastLeadPhone = null;
+      setLeadStatus({
+        status: "idle",
+        message: "Phone number not detected yet. Add it to check CRM status.",
+        showActions: false
+      });
+      return;
+    }
+    if (isCheckingLead && phone === lastLeadPhone) return;
+    isCheckingLead = true;
+    lastLeadPhone = phone;
+    setLeadStatus({ status: "checking", message: "Checking CRM & Lead Inbox...", showActions: false });
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: "CONTACT_LOOKUP",
+        payload: { phone }
+      });
+      if (!res?.ok) {
+        setLeadStatus({
+          status: "error",
+          message: res?.error || "Unable to check CRM status.",
+          showActions: false
+        });
+        return;
+      }
+      const data = res?.data;
+      if (data?.status === "lead" && data?.lead) {
+        updateContactFields({
+          name: data.lead.name,
+          phone: data.lead.phone,
+          email: data.lead.email,
+          company: data.lead.company,
+          stageId: data.lead.stage?.id
+        });
+        const stageLabel = data.lead.stage?.name ? `Stage: ${data.lead.stage.name}` : "Stage assigned";
+        setLeadStatus({
+          status: "lead",
+          message: `Already in Tynkwink CRM \u2022 ${stageLabel}`,
+          showActions: false
+        });
+        return;
+      }
+      if (data?.status === "inbox" && data?.inbox) {
+        updateContactFields({
+          name: data.inbox.leadPreview?.name,
+          phone: data.inbox.leadPreview?.phone,
+          email: data.inbox.leadPreview?.email,
+          company: data.inbox.leadPreview?.company
+        });
+        setLeadStatus({
+          status: "inbox",
+          message: `Lead Inbox (${data.inbox.status}) \u2022 Awaiting approval`,
+          showActions: false
+        });
+        return;
+      }
+      setLeadStatus({
+        status: "none",
+        message: "Not found in CRM or Lead Inbox. Create now or send for approval.",
+        showActions: true
+      });
+    } finally {
+      isCheckingLead = false;
+    }
   };
   const updateSummary = (summary) => {
     if (!summary) return;
@@ -753,7 +1112,11 @@ function mountOverlay(opts) {
     pipelineName.value = summary.pipeline?.name ?? "Leads";
     const defaultStage = summary.pipeline?.stages?.find((stage) => stage.id === summary.pipeline?.defaultStageId) ?? summary.pipeline?.stages?.[0];
     stageSelect.innerHTML = "";
-    (summary.pipeline?.stages ?? []).forEach((stage) => {
+    lastSummaryStages = (summary.pipeline?.stages ?? []).map((stage) => ({
+      id: stage.id,
+      name: stage.name ?? "Stage"
+    }));
+    lastSummaryStages.forEach((stage) => {
       const option = document.createElement("option");
       option.value = stage.id;
       option.textContent = stage.name ?? "Stage";
@@ -825,6 +1188,7 @@ function mountOverlay(opts) {
       }
       updateSummary(res?.summary);
       log.textContent = "CRM summary synced.";
+      refreshLeadStatus();
     } finally {
       isLoadingSummary = false;
     }
@@ -852,7 +1216,12 @@ function mountOverlay(opts) {
   };
   (async () => {
     ensureHeaderObserver();
-    setInterval(ensureHeaderObserver, 1e3);
+    setPanelCollapsed(false);
+    window.addEventListener("resize", updateOverlayBounds);
+    setInterval(() => {
+      ensureHeaderObserver();
+      updateOverlayBounds();
+    }, 1e3);
     const res = await opts.onCheckAuth();
     const token = res?.auth?.token ?? null;
     setAuthState(token);
@@ -935,14 +1304,76 @@ var EXTRACTOR_VERSION = "dom-v1";
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
+var ignoredPresence = /* @__PURE__ */ new Set(["online", "typing...", "typing\u2026", "last seen"]);
+var phonePattern = /(\+?\d[\d\s().-]{6,}\d)/;
+var normalizePhone = (value) => {
+  if (!value) return null;
+  const match = value.match(phonePattern);
+  if (!match) return null;
+  let normalized = match[0].replace(/[^\d+]/g, "");
+  if (normalized.startsWith("00")) {
+    normalized = `+${normalized.slice(2)}`;
+  }
+  if (normalized.startsWith("+")) {
+    normalized = `+${normalized.slice(1).replace(/\D/g, "")}`;
+  } else {
+    normalized = normalized.replace(/\D/g, "");
+  }
+  if (normalized.replace(/\D/g, "").length < 7) return null;
+  return normalized;
+};
+var extractTextCandidates = (root) => {
+  if (!root) return [];
+  const candidates = /* @__PURE__ */ new Set();
+  const addCandidate = (value) => {
+    const trimmed = value?.trim();
+    if (!trimmed) return;
+    const lower = trimmed.toLowerCase();
+    if (ignoredPresence.has(lower)) return;
+    candidates.add(trimmed);
+  };
+  addCandidate(root.getAttribute("title"));
+  addCandidate(root.getAttribute("aria-label"));
+  root.querySelectorAll("span").forEach((span) => addCandidate(span.textContent));
+  root.querySelectorAll("[title],[aria-label]").forEach((node) => {
+    addCandidate(node.getAttribute("title"));
+    addCandidate(node.getAttribute("aria-label"));
+  });
+  return Array.from(candidates);
+};
+var pickBestText = (candidates) => {
+  if (!candidates.length) return null;
+  return candidates.sort((a, b) => b.length - a.length)[0] || null;
+};
 function getChatTitle() {
   const header = document.querySelector("header");
-  if (!header) return "Unknown";
-  const candidates = Array.from(header.querySelectorAll("span")).map((s) => (s.textContent || "").trim()).filter((t) => t.length > 0);
-  candidates.sort((a, b) => b.length - a.length);
-  return candidates[0] || "Unknown";
+  const headerTitle = pickBestText(extractTextCandidates(header));
+  if (headerTitle) return headerTitle;
+  const selectedChat = document.querySelector('[aria-selected="true"]');
+  const selectedTitle = pickBestText(extractTextCandidates(selectedChat));
+  return selectedTitle || "Unknown";
 }
 function getPhoneE164BestEffort() {
+  const header = document.querySelector("header");
+  const selectedChat = document.querySelector('[aria-selected="true"]');
+  const candidateSources = [
+    ...extractTextCandidates(header),
+    ...extractTextCandidates(selectedChat)
+  ];
+  for (const candidate of candidateSources) {
+    const normalized = normalizePhone(candidate);
+    if (normalized) return normalized;
+  }
+  const dataId = selectedChat?.getAttribute("data-id") || header?.getAttribute("data-id") || selectedChat?.closest("[data-id]")?.getAttribute("data-id");
+  const dataIdPhone = normalizePhone(dataId);
+  if (dataIdPhone) return dataIdPhone;
+  try {
+    const url = new URL(location.href);
+    const phoneParam = normalizePhone(url.searchParams.get("phone"));
+    if (phoneParam) return phoneParam;
+  } catch {
+    return null;
+  }
   return null;
 }
 function extractVisibleMessages(limit = 50) {
