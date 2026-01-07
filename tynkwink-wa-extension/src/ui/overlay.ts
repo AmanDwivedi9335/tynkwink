@@ -36,38 +36,25 @@ export function mountOverlay(opts: OverlayOpts) {
         --tw-wa-topbar-height: 54px;
         --tw-wa-pipeline-height: 52px;
       }
-      body.tw-wa-overlay-active {
-        padding-top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
-        padding-right: var(--tw-wa-panel-width);
-        box-sizing: border-box;
-      }
-      body.tw-wa-overlay-active header {
-        top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
-        right: var(--tw-wa-panel-width);
-        width: calc(100% - var(--tw-wa-panel-width));
-        box-sizing: border-box;
-      }
-      body.tw-wa-overlay-active main {
-        top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
-        height: calc(100% - var(--tw-wa-topbar-height) - var(--tw-wa-pipeline-height));
-        right: var(--tw-wa-panel-width);
-        width: calc(100% - var(--tw-wa-panel-width));
-        box-sizing: border-box;
-      }
-      body.tw-wa-overlay-active #app {
-        min-height: calc(100vh - var(--tw-wa-topbar-height) - var(--tw-wa-pipeline-height));
-        box-sizing: border-box;
-      }
       @media (max-width: 1280px) {
         :root {
           --tw-wa-panel-width: 320px;
         }
       }
+      #tw-wa-overlay-root {
+        --tw-wa-app-left: 0px;
+        --tw-wa-app-top: 0px;
+        --tw-wa-app-right: 0px;
+        --tw-wa-app-bottom: 0px;
+        --tw-wa-app-width: 100vw;
+        --tw-wa-app-height: 100vh;
+        --tw-wa-panel-effective-width: var(--tw-wa-panel-width);
+      }
       .tw-wa-topbar {
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
+        top: var(--tw-wa-app-top);
+        left: var(--tw-wa-app-left);
+        right: var(--tw-wa-app-right);
         height: var(--tw-wa-topbar-height);
         background: linear-gradient(180deg, #111, #1b1b1b);
         border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -118,9 +105,9 @@ export function mountOverlay(opts: OverlayOpts) {
       }
       .tw-wa-pipeline {
         position: fixed;
-        top: var(--tw-wa-topbar-height);
-        left: 0;
-        right: var(--tw-wa-panel-width);
+        top: calc(var(--tw-wa-app-top) + var(--tw-wa-topbar-height));
+        left: var(--tw-wa-app-left);
+        right: calc(var(--tw-wa-panel-effective-width) + var(--tw-wa-app-right));
         height: var(--tw-wa-pipeline-height);
         display: grid;
         grid-template-columns: repeat(7, 1fr);
@@ -145,10 +132,10 @@ export function mountOverlay(opts: OverlayOpts) {
       }
       .tw-wa-panel {
         position: fixed;
-        top: var(--tw-wa-topbar-height);
-        right: 0;
-        width: var(--tw-wa-panel-width);
-        bottom: 0;
+        top: calc(var(--tw-wa-app-top) + var(--tw-wa-topbar-height));
+        right: var(--tw-wa-app-right);
+        width: var(--tw-wa-panel-effective-width);
+        bottom: var(--tw-wa-app-bottom);
         background: #151515;
         border-left: 1px solid rgba(255,255,255,0.08);
         color: #e9f2ff;
@@ -703,6 +690,32 @@ export function mountOverlay(opts: OverlayOpts) {
   let headerObserver: MutationObserver | null = null;
   let observedHeader: HTMLElement | null = null;
 
+  const getPanelWidth = () => {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue("--tw-wa-panel-width");
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) ? parsed : 360;
+  };
+
+  const updateOverlayBounds = () => {
+    const appRoot = document.querySelector("#app") as HTMLElement | null;
+    const rect = appRoot?.getBoundingClientRect() ?? {
+      left: 0,
+      top: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+    const panelWidth = Math.min(rect.width || window.innerWidth, getPanelWidth());
+    root.style.setProperty("--tw-wa-app-left", `${rect.left}px`);
+    root.style.setProperty("--tw-wa-app-top", `${rect.top}px`);
+    root.style.setProperty("--tw-wa-app-right", `${Math.max(0, window.innerWidth - rect.right)}px`);
+    root.style.setProperty("--tw-wa-app-bottom", `${Math.max(0, window.innerHeight - rect.bottom)}px`);
+    root.style.setProperty("--tw-wa-app-width", `${rect.width || window.innerWidth}px`);
+    root.style.setProperty("--tw-wa-app-height", `${rect.height || window.innerHeight}px`);
+    root.style.setProperty("--tw-wa-panel-effective-width", `${panelWidth}px`);
+  };
+
   const updateChatSnapshot = () => {
     const snapshot = opts.onGetChatSnapshot();
     const nextName = snapshot?.name || null;
@@ -891,7 +904,12 @@ export function mountOverlay(opts: OverlayOpts) {
 
   (async () => {
     ensureHeaderObserver();
-    setInterval(ensureHeaderObserver, 1000);
+    updateOverlayBounds();
+    window.addEventListener("resize", updateOverlayBounds);
+    setInterval(() => {
+      ensureHeaderObserver();
+      updateOverlayBounds();
+    }, 1000);
     const res = await opts.onCheckAuth();
     const token = res?.auth?.token ?? null;
     setAuthState(token);
