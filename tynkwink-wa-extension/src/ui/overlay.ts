@@ -267,6 +267,11 @@ export function mountOverlay(opts: OverlayOpts) {
       .tw-wa-field label {
         color: #e0e6f0;
       }
+      .tw-wa-field.tw-wa-field-stack {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        align-items: start;
+      }
       .tw-wa-input,
       .tw-wa-select,
       .tw-wa-textarea {
@@ -368,6 +373,65 @@ export function mountOverlay(opts: OverlayOpts) {
         border-radius: 8px;
         cursor: pointer;
         font-size: 12px;
+      }
+      .tw-wa-btn-primary {
+        border: none;
+        background: #1c5aa6;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .tw-wa-btn-primary[disabled],
+      .tw-wa-btn-secondary[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .tw-wa-lead-status {
+        background: rgba(17, 20, 25, 0.7);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tw-wa-lead-status-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #e0e6f0;
+      }
+      .tw-wa-status-pill {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(59, 130, 246, 0.15);
+        color: #93c5fd;
+        border: 1px solid rgba(59, 130, 246, 0.4);
+      }
+      .tw-wa-status-pill.is-success {
+        background: rgba(22, 163, 74, 0.15);
+        color: #86efac;
+        border-color: rgba(22, 163, 74, 0.5);
+      }
+      .tw-wa-status-pill.is-warning {
+        background: rgba(234, 179, 8, 0.15);
+        color: #fde68a;
+        border-color: rgba(234, 179, 8, 0.5);
+      }
+      .tw-wa-status-body {
+        font-size: 12px;
+        color: #b3bfce;
+        line-height: 1.4;
+      }
+      .tw-wa-status-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
       }
       .tw-wa-reminder-list,
       .tw-wa-quick-list {
@@ -568,6 +632,23 @@ export function mountOverlay(opts: OverlayOpts) {
                 <button class="tw-wa-btn-secondary" data-action="copy-phone">Copy</button>
               </div>
             </div>
+            <div class="tw-wa-field tw-wa-field-stack">
+              <div class="tw-wa-lead-status">
+                <div class="tw-wa-lead-status-header">
+                  <span>Lead Status</span>
+                  <span class="tw-wa-status-pill" data-role="lead-status-pill">Checking</span>
+                </div>
+                <div class="tw-wa-status-body" data-role="lead-status-body">
+                  Waiting for chat details...
+                </div>
+                <div class="tw-wa-status-actions" data-role="lead-status-actions">
+                  <button class="tw-wa-btn-primary" type="button" data-action="create-lead">Create Lead</button>
+                  <button class="tw-wa-btn-secondary" type="button" data-action="send-inbox">
+                    Send to Lead Inbox
+                  </button>
+                </div>
+              </div>
+            </div>
             <div class="tw-wa-field">
               <label>AI Auto-Reply</label>
               <div class="tw-wa-inline" style="justify-content:space-between;">
@@ -733,6 +814,11 @@ export function mountOverlay(opts: OverlayOpts) {
   const stageSelect = root.querySelector('[data-role="stage-select"]') as HTMLSelectElement;
   const sequenceLabel = root.querySelector('[data-role="sequence"]') as HTMLSpanElement;
   const sourceName = root.querySelector('[data-role="source-name"]') as HTMLInputElement;
+  const leadStatusPill = root.querySelector('[data-role="lead-status-pill"]') as HTMLSpanElement;
+  const leadStatusBody = root.querySelector('[data-role="lead-status-body"]') as HTMLDivElement;
+  const leadStatusActions = root.querySelector('[data-role="lead-status-actions"]') as HTMLDivElement;
+  const createLeadButton = root.querySelector('[data-action="create-lead"]') as HTMLButtonElement;
+  const sendInboxButton = root.querySelector('[data-action="send-inbox"]') as HTMLButtonElement;
   const modal = root.querySelector('[data-role="modal"]') as HTMLDivElement;
   const modalStatus = root.querySelector('[data-role="modal-status"]') as HTMLDivElement;
   const tenantField = root.querySelector('[data-role="tenant-field"]') as HTMLDivElement;
@@ -757,6 +843,9 @@ export function mountOverlay(opts: OverlayOpts) {
   let isLoggingIn = false;
   let isLoadingSummary = false;
   let isPanelCollapsed = false;
+  let isCheckingLead = false;
+  let lastLeadPhone: string | null = null;
+  let lastSummaryStages: Array<{ id: string; name: string }> = [];
 
   let lastSnapshot: { name: string | null; phone: string | null } = { name: null, phone: null };
   let headerObserver: MutationObserver | null = null;
@@ -807,6 +896,7 @@ export function mountOverlay(opts: OverlayOpts) {
     contactName.value = nextName || "";
     contactPhone.value = nextPhone || "";
     contactCreated.value = new Date().toLocaleString();
+    refreshLeadStatus();
   };
 
   const ensureHeaderObserver = () => {
@@ -864,8 +954,199 @@ export function mountOverlay(opts: OverlayOpts) {
     }
   });
 
+  contactPhone.addEventListener("change", () => {
+    refreshLeadStatus();
+  });
+
+  createLeadButton.addEventListener("click", async () => {
+    const name = contactName.value.trim() || "WhatsApp Lead";
+    const phone = contactPhone.value.trim();
+    if (!phone) {
+      setLeadStatus({
+        status: "error",
+        message: "Phone number is required to create a lead.",
+        showActions: true,
+      });
+      return;
+    }
+    createLeadButton.disabled = true;
+    sendInboxButton.disabled = true;
+    setLeadStatus({ status: "checking", message: "Creating lead in CRM...", showActions: false });
+    const payload = {
+      name,
+      phone,
+      email: contactEmail.value.trim() || undefined,
+      company: contactCompany.value.trim() || undefined,
+      stageId: stageSelect.value || undefined,
+    };
+    const res = await chrome.runtime.sendMessage({ type: "CREATE_LEAD", payload });
+    if (!res?.ok) {
+      setLeadStatus({
+        status: "error",
+        message: res?.error || "Unable to create lead.",
+        showActions: true,
+      });
+      createLeadButton.disabled = false;
+      sendInboxButton.disabled = false;
+      return;
+    }
+    await refreshSummary();
+    createLeadButton.disabled = false;
+    sendInboxButton.disabled = false;
+  });
+
+  sendInboxButton.addEventListener("click", async () => {
+    const name = contactName.value.trim() || "WhatsApp Lead";
+    const phone = contactPhone.value.trim();
+    if (!phone) {
+      setLeadStatus({
+        status: "error",
+        message: "Phone number is required to send to Lead Inbox.",
+        showActions: true,
+      });
+      return;
+    }
+    sendInboxButton.disabled = true;
+    createLeadButton.disabled = true;
+    setLeadStatus({ status: "checking", message: "Sending to Lead Inbox...", showActions: false });
+    const stageName = lastSummaryStages.find((stage) => stage.id === stageSelect.value)?.name;
+    const payload = {
+      name,
+      phone,
+      email: contactEmail.value.trim() || undefined,
+      company: contactCompany.value.trim() || undefined,
+      notes: `WhatsApp chat import for ${name}`,
+      preferredStage: stageName,
+    };
+    const res = await chrome.runtime.sendMessage({ type: "CREATE_LEAD_INBOX", payload });
+    if (!res?.ok) {
+      setLeadStatus({
+        status: "error",
+        message: res?.error || "Unable to send to Lead Inbox.",
+        showActions: true,
+      });
+      sendInboxButton.disabled = false;
+      createLeadButton.disabled = false;
+      return;
+    }
+    await refreshSummary();
+    sendInboxButton.disabled = false;
+    createLeadButton.disabled = false;
+  });
+
   const setEmptyList = (container: HTMLElement, message: string) => {
     container.innerHTML = `<div class="tw-wa-empty">${message}</div>`;
+  };
+
+  const setLeadStatus = (params: {
+    status: "idle" | "checking" | "lead" | "inbox" | "none" | "error";
+    message: string;
+    showActions: boolean;
+  }) => {
+    leadStatusBody.textContent = params.message;
+    leadStatusActions.style.display = params.showActions ? "flex" : "none";
+    leadStatusPill.classList.remove("is-success", "is-warning");
+    if (params.status === "lead") {
+      leadStatusPill.textContent = "In CRM";
+      leadStatusPill.classList.add("is-success");
+    } else if (params.status === "inbox") {
+      leadStatusPill.textContent = "In Lead Inbox";
+      leadStatusPill.classList.add("is-warning");
+    } else if (params.status === "checking") {
+      leadStatusPill.textContent = "Checking";
+    } else if (params.status === "none") {
+      leadStatusPill.textContent = "Not Found";
+    } else if (params.status === "error") {
+      leadStatusPill.textContent = "Error";
+    } else {
+      leadStatusPill.textContent = "Idle";
+    }
+  };
+
+  const updateContactFields = (payload: {
+    name?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    company?: string | null;
+    stageId?: string | null;
+  }) => {
+    if (payload.name) contactName.value = payload.name;
+    if (payload.phone) contactPhone.value = payload.phone;
+    if (payload.email) contactEmail.value = payload.email;
+    if (payload.company) contactCompany.value = payload.company;
+    if (payload.stageId) stageSelect.value = payload.stageId;
+  };
+
+  const refreshLeadStatus = async () => {
+    const phone = contactPhone.value.trim();
+    if (!phone) {
+      lastLeadPhone = null;
+      setLeadStatus({
+        status: "idle",
+        message: "Phone number not detected yet. Add it to check CRM status.",
+        showActions: false,
+      });
+      return;
+    }
+    if (isCheckingLead && phone === lastLeadPhone) return;
+    isCheckingLead = true;
+    lastLeadPhone = phone;
+    setLeadStatus({ status: "checking", message: "Checking CRM & Lead Inbox...", showActions: false });
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: "CONTACT_LOOKUP",
+        payload: { phone },
+      });
+      if (!res?.ok) {
+        setLeadStatus({
+          status: "error",
+          message: res?.error || "Unable to check CRM status.",
+          showActions: false,
+        });
+        return;
+      }
+
+      const data = res?.data;
+      if (data?.status === "lead" && data?.lead) {
+        updateContactFields({
+          name: data.lead.name,
+          phone: data.lead.phone,
+          email: data.lead.email,
+          company: data.lead.company,
+          stageId: data.lead.stage?.id,
+        });
+        const stageLabel = data.lead.stage?.name ? `Stage: ${data.lead.stage.name}` : "Stage assigned";
+        setLeadStatus({
+          status: "lead",
+          message: `Already in Tynkwink CRM • ${stageLabel}`,
+          showActions: false,
+        });
+        return;
+      }
+
+      if (data?.status === "inbox" && data?.inbox) {
+        updateContactFields({
+          name: data.inbox.leadPreview?.name,
+          phone: data.inbox.leadPreview?.phone,
+          email: data.inbox.leadPreview?.email,
+          company: data.inbox.leadPreview?.company,
+        });
+        setLeadStatus({
+          status: "inbox",
+          message: `Lead Inbox (${data.inbox.status}) • Awaiting approval`,
+          showActions: false,
+        });
+        return;
+      }
+
+      setLeadStatus({
+        status: "none",
+        message: "Not found in CRM or Lead Inbox. Create now or send for approval.",
+        showActions: true,
+      });
+    } finally {
+      isCheckingLead = false;
+    }
   };
 
   const updateSummary = (summary: any) => {
@@ -882,7 +1163,11 @@ export function mountOverlay(opts: OverlayOpts) {
       summary.pipeline?.stages?.[0];
 
     stageSelect.innerHTML = "";
-    (summary.pipeline?.stages ?? []).forEach((stage: any) => {
+    lastSummaryStages = (summary.pipeline?.stages ?? []).map((stage: any) => ({
+      id: stage.id,
+      name: stage.name ?? "Stage",
+    }));
+    lastSummaryStages.forEach((stage) => {
       const option = document.createElement("option");
       option.value = stage.id;
       option.textContent = stage.name ?? "Stage";
@@ -961,6 +1246,7 @@ export function mountOverlay(opts: OverlayOpts) {
       }
       updateSummary(res?.summary);
       log.textContent = "CRM summary synced.";
+      refreshLeadStatus();
     } finally {
       isLoadingSummary = false;
     }
