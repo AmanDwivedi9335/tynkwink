@@ -322,6 +322,22 @@ const columns = [
   { label: "Actions", minWidth: 180 },
 ];
 
+const formatLeadNotes = (notes: string) => {
+  if (!notes?.trim()) {
+    return ["—"];
+  }
+
+  const normalized = notes.replace(/<br\s*\/?>/gi, "\n");
+  const lines = normalized
+    .split("\n")
+    .flatMap((line) => line.split("|"))
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/\s*:\s*/g, ": "));
+
+  return lines.length ? lines : ["—"];
+};
+
 export default function CrmPage() {
   const [pipeline, setPipeline] = useState<CrmPipelineResponse | null>(null);
   const [leads, setLeads] = useState<CrmLead[]>([]);
@@ -661,6 +677,7 @@ export default function CrmPage() {
             <TableBody>
               {filteredLeads.map((lead) => {
                 const assignee = assignees.find((item) => item.id === lead.assigneeId);
+                const formattedNotes = formatLeadNotes(lead.notes);
                 return (
                   <TableRow key={lead.id} hover>
                   <TableCell>
@@ -712,9 +729,17 @@ export default function CrmPage() {
                     </Stack>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {lead.notes}
-                    </Typography>
+                    <Stack spacing={0.25}>
+                      {formattedNotes.map((noteLine, index) => (
+                        <Typography
+                          key={`${lead.id}-note-${index}`}
+                          variant="body2"
+                          color="text.secondary"
+                        >
+                          {formattedNotes.length > 1 ? `• ${noteLine}` : noteLine}
+                        </Typography>
+                      ))}
+                    </Stack>
                   </TableCell>
                   <TableCell>
                     <Stack spacing={0.5}>
