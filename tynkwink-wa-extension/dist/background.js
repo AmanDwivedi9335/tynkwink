@@ -19,6 +19,8 @@ var API_PREFIX = "/api";
 var LOGIN_TIMEOUT_MS = 12e3;
 var SYNC_TIMEOUT_MS = 2e4;
 var SUMMARY_TIMEOUT_MS = 12e3;
+var LOOKUP_TIMEOUT_MS = 12e3;
+var CREATE_TIMEOUT_MS = 12e3;
 var RETRY_STATUSES = /* @__PURE__ */ new Set([429, 502, 503, 504]);
 function buildApiUrl(apiBase, path) {
   const trimmed = apiBase.replace(/\/+$/, "");
@@ -242,6 +244,121 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           return;
         }
         sendResponse({ ok: true, summary: data });
+        return;
+      }
+      if (message.type === "CONTACT_LOOKUP") {
+        const auth = await getAuth();
+        if (!auth.apiBase || !auth.token || !auth.tenantId) {
+          sendResponse({ ok: false, error: "Not authenticated. Log in to Tynkwink CRM from the WhatsApp overlay." });
+          return;
+        }
+        const phone = message.payload.phone?.trim();
+        if (!phone) {
+          sendResponse({ ok: false, error: "Phone number is required." });
+          return;
+        }
+        const url = buildApiUrl(auth.apiBase, `/extension/contact-status?phone=${encodeURIComponent(phone)}`);
+        let resp;
+        try {
+          resp = await fetchWithTimeout(
+            url,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${auth.token}`
+              }
+            },
+            LOOKUP_TIMEOUT_MS
+          );
+        } catch (error) {
+          sendResponse({
+            ok: false,
+            error: error?.name === "AbortError" ? "Lookup request timed out. Please try again." : error?.message || "Unable to reach Tynkwink CRM."
+          });
+          return;
+        }
+        const data = await readResponseBody(resp);
+        if (!resp.ok) {
+          if (resp.status === 401 || resp.status === 403) {
+            await saveAuth({ apiBase: auth.apiBase, token: null, tenantId: null });
+          }
+          sendResponse({ ok: false, error: data?.message || "Unable to load contact status.", status: resp.status });
+          return;
+        }
+        sendResponse({ ok: true, data });
+        return;
+      }
+      if (message.type === "CREATE_LEAD") {
+        const auth = await getAuth();
+        if (!auth.apiBase || !auth.token || !auth.tenantId) {
+          sendResponse({ ok: false, error: "Not authenticated. Log in to Tynkwink CRM from the WhatsApp overlay." });
+          return;
+        }
+        const url = buildApiUrl(auth.apiBase, "/crm/leads");
+        let resp;
+        try {
+          resp = await fetchWithTimeout(
+            url,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${auth.token}`
+              },
+              body: JSON.stringify(message.payload)
+            },
+            CREATE_TIMEOUT_MS
+          );
+        } catch (error) {
+          sendResponse({
+            ok: false,
+            error: error?.name === "AbortError" ? "Create lead request timed out. Please try again." : error?.message || "Unable to reach Tynkwink CRM."
+          });
+          return;
+        }
+        const data = await readResponseBody(resp);
+        if (!resp.ok) {
+          sendResponse({ ok: false, error: data?.message || "Unable to create lead.", status: resp.status });
+          return;
+        }
+        sendResponse({ ok: true, data });
+        return;
+      }
+      if (message.type === "CREATE_LEAD_INBOX") {
+        const auth = await getAuth();
+        if (!auth.apiBase || !auth.token || !auth.tenantId) {
+          sendResponse({ ok: false, error: "Not authenticated. Log in to Tynkwink CRM from the WhatsApp overlay." });
+          return;
+        }
+        const url = buildApiUrl(auth.apiBase, "/extension/lead-inbox");
+        let resp;
+        try {
+          resp = await fetchWithTimeout(
+            url,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${auth.token}`
+              },
+              body: JSON.stringify(message.payload)
+            },
+            CREATE_TIMEOUT_MS
+          );
+        } catch (error) {
+          sendResponse({
+            ok: false,
+            error: error?.name === "AbortError" ? "Lead inbox request timed out. Please try again." : error?.message || "Unable to reach Tynkwink CRM."
+          });
+          return;
+        }
+        const data = await readResponseBody(resp);
+        if (!resp.ok) {
+          sendResponse({ ok: false, error: data?.message || "Unable to send to lead inbox.", status: resp.status });
+          return;
+        }
+        sendResponse({ ok: true, data });
         return;
       }
       sendResponse({ ok: false, error: "Unknown message type" });

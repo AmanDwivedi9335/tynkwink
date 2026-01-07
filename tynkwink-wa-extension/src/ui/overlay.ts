@@ -1282,6 +1282,7 @@ export function mountOverlay(opts: OverlayOpts) {
     window.addEventListener("resize", updateOverlayBounds);
     setInterval(() => {
       ensureHeaderObserver();
+      updateChatSnapshot();
       updateOverlayBounds();
     }, 1000);
     const res = await opts.onCheckAuth();

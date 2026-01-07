@@ -12,20 +12,90 @@ function sleep(ms: number) {
  * WhatsApp Web DOM changes frequently. These selectors are heuristic.
  * You will likely need to adjust logic here over time.
  */
+const ignoredPresence = new Set(["online", "typing...", "typing…", "last seen"]);
+const phonePattern = /(\+?\d[\d\s().-]{6,}\d)/;
+
+const normalizePhone = (value: string | null | undefined) => {
+  if (!value) return null;
+  const match = value.match(phonePattern);
+  if (!match) return null;
+  let normalized = match[0].replace(/[^\d+]/g, "");
+  if (normalized.startsWith("00")) {
+    normalized = `+${normalized.slice(2)}`;
+  }
+  if (normalized.startsWith("+")) {
+    normalized = `+${normalized.slice(1).replace(/\D/g, "")}`;
+  } else {
+    normalized = normalized.replace(/\D/g, "");
+  }
+  if (normalized.replace(/\D/g, "").length < 7) return null;
+  return normalized;
+};
+
+const extractTextCandidates = (root: Element | null) => {
+  if (!root) return [];
+  const candidates = new Set<string>();
+  const addCandidate = (value: string | null | undefined) => {
+    const trimmed = value?.trim();
+    if (!trimmed) return;
+    const lower = trimmed.toLowerCase();
+    if (ignoredPresence.has(lower)) return;
+    candidates.add(trimmed);
+  };
+
+  addCandidate(root.getAttribute("title"));
+  addCandidate(root.getAttribute("aria-label"));
+  root.querySelectorAll("span").forEach((span) => addCandidate(span.textContent));
+  root.querySelectorAll<HTMLElement>("[title],[aria-label]").forEach((node) => {
+    addCandidate(node.getAttribute("title"));
+    addCandidate(node.getAttribute("aria-label"));
+  });
+
+  return Array.from(candidates);
+};
+
+const pickBestText = (candidates: string[]) => {
+  if (!candidates.length) return null;
+  return candidates.sort((a, b) => b.length - a.length)[0] || null;
+};
+
+const pickFirstMatchText = (selectors: string[]) => {
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (!element) continue;
+    const text = pickBestText(extractTextCandidates(element));
+    if (text) return text;
+  }
+  return null;
+};
+
+const extractPhoneFromDataId = (dataId: string | null | undefined) => {
+  if (!dataId) return null;
+  const match = dataId.match(/(\d{7,})@c\.us/);
+  if (match) return normalizePhone(match[1]);
+  return normalizePhone(dataId);
+};
+
 function getChatTitle(): string {
   // Strategy:
   // 1) find a header area
   // 2) choose the most prominent text node
-  const header = document.querySelector("header");
-  if (!header) return "Unknown";
+  const headerTitle = pickFirstMatchText([
+    '[data-testid="conversation-info-header-chat-title"]',
+    'header [title]',
+    "header [aria-label]",
+    'header [dir="auto"]',
+  ]);
+  if (headerTitle) return headerTitle;
 
-  const candidates = Array.from(header.querySelectorAll("span"))
-    .map((s) => (s.textContent || "").trim())
-    .filter((t) => t.length > 0);
-
-  // Heuristic: pick the longest among top few
-  candidates.sort((a, b) => b.length - a.length);
-  return candidates[0] || "Unknown";
+  const selectedChat = document.querySelector('[aria-selected="true"]');
+  const selectedTitle =
+    pickFirstMatchText([
+      '[aria-selected="true"] [title]',
+      '[aria-selected="true"] [dir="auto"]',
+      '[aria-selected="true"] [aria-label]',
+    ]) ?? pickBestText(extractTextCandidates(selectedChat));
+  return selectedTitle || "Unknown";
 }
 
 /**
@@ -34,7 +104,33 @@ function getChatTitle(): string {
  * Treat phoneE164 as optional.
  */
 function getPhoneE164BestEffort(): string | null {
-  // CHANGE HERE if you find a stable way in your WhatsApp Web version.
+  const header = document.querySelector("header");
+  const selectedChat = document.querySelector('[aria-selected="true"]');
+  const candidateSources = [
+    ...extractTextCandidates(header),
+    ...extractTextCandidates(selectedChat),
+  ];
+
+  for (const candidate of candidateSources) {
+    const normalized = normalizePhone(candidate);
+    if (normalized) return normalized;
+  }
+
+  const dataId =
+    selectedChat?.getAttribute("data-id") ||
+    header?.getAttribute("data-id") ||
+    selectedChat?.closest("[data-id]")?.getAttribute("data-id");
+  const dataIdPhone = extractPhoneFromDataId(dataId);
+  if (dataIdPhone) return dataIdPhone;
+
+  try {
+    const url = new URL(location.href);
+    const phoneParam = normalizePhone(url.searchParams.get("phone"));
+    if (phoneParam) return phoneParam;
+  } catch {
+    return null;
+  }
+
   return null;
 }
 
