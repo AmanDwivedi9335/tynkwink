@@ -41,6 +41,9 @@ export function mountOverlay(opts: OverlayOpts) {
         padding-right: var(--tw-wa-panel-effective-width);
         box-sizing: border-box;
       }
+      body.tw-wa-overlay-active.tw-wa-panel-collapsed {
+        padding-right: 0;
+      }
       body.tw-wa-overlay-active header {
         top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
       }
@@ -106,6 +109,23 @@ export function mountOverlay(opts: OverlayOpts) {
         align-items: center;
         gap: 10px;
       }
+      .tw-wa-icon-button {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(18, 22, 30, 0.7);
+        color: #9fd3ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      .tw-wa-icon-button svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+      }
       .tw-wa-pill {
         border: 1px solid rgba(96, 181, 255, 0.6);
         color: #e3f1ff;
@@ -158,6 +178,10 @@ export function mountOverlay(opts: OverlayOpts) {
         display: flex;
         flex-direction: column;
         pointer-events: auto;
+        transition: transform 0.25s ease;
+      }
+      #tw-wa-overlay-root.tw-wa-panel-collapsed .tw-wa-panel {
+        transform: translateX(100%);
       }
       .tw-wa-panel-tabs {
         display: grid;
@@ -496,6 +520,15 @@ export function mountOverlay(opts: OverlayOpts) {
         <span data-role="nav-reminders">Pending Reminders (—)</span>
       </div>
       <div class="tw-wa-actions">
+        <button
+          class="tw-wa-icon-button"
+          type="button"
+          data-action="toggle-panel"
+          aria-expanded="true"
+          title="Toggle panel"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+        </button>
         <span class="tw-wa-auth-status">Checking CRM login...</span>
         <button class="tw-wa-pill" data-action="login">Login</button>
         <button class="tw-wa-pill" data-action="sync">Sync Chat</button>
@@ -563,11 +596,22 @@ export function mountOverlay(opts: OverlayOpts) {
             </div>
           </div>
           <div class="tw-wa-section">
-            <button class="tw-wa-collapsible-toggle" data-action="toggle-additional" aria-expanded="false">
+            <button
+              class="tw-wa-collapsible-toggle"
+              data-action="toggle-additional"
+              aria-expanded="false"
+              aria-controls="tw-wa-additional-info"
+              type="button"
+            >
               <span class="tw-wa-section-header">Additional Info</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
             </button>
-            <div class="tw-wa-collapsible-content" data-role="additional-content">
+            <div
+              class="tw-wa-collapsible-content"
+              data-role="additional-content"
+              id="tw-wa-additional-info"
+              hidden
+            >
               <div class="tw-wa-field">
                 <label>Email</label>
                 <input class="tw-wa-input" data-role="contact-email" placeholder="Enter the Email" />
@@ -584,11 +628,21 @@ export function mountOverlay(opts: OverlayOpts) {
             </div>
           </div>
           <div class="tw-wa-section">
-            <button class="tw-wa-collapsible-toggle" data-action="toggle-activity" aria-expanded="true">
+            <button
+              class="tw-wa-collapsible-toggle"
+              data-action="toggle-activity"
+              aria-expanded="true"
+              aria-controls="tw-wa-activity-history"
+              type="button"
+            >
               <span class="tw-wa-section-header">Activity History</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
             </button>
-            <div class="tw-wa-collapsible-content is-open" data-role="activity-content">
+            <div
+              class="tw-wa-collapsible-content is-open"
+              data-role="activity-content"
+              id="tw-wa-activity-history"
+            >
               <label class="tw-wa-field" style="grid-template-columns:1fr; gap:6px;">
                 <span style="color:#9aa7b6;">Notes</span>
                 <textarea class="tw-wa-textarea" placeholder="Take a note for this chat."></textarea>
@@ -698,9 +752,11 @@ export function mountOverlay(opts: OverlayOpts) {
   const reminderList = root.querySelector('[data-role="reminder-list"]') as HTMLDivElement;
   const quickList = root.querySelector('[data-role="quick-list"]') as HTMLDivElement;
   const copyPhoneButton = root.querySelector('[data-action="copy-phone"]') as HTMLButtonElement;
+  const panelToggleButton = root.querySelector('[data-action="toggle-panel"]') as HTMLButtonElement;
 
   let isLoggingIn = false;
   let isLoadingSummary = false;
+  let isPanelCollapsed = false;
 
   let lastSnapshot: { name: string | null; phone: string | null } = { name: null, phone: null };
   let headerObserver: MutationObserver | null = null;
@@ -722,7 +778,7 @@ export function mountOverlay(opts: OverlayOpts) {
       width: window.innerWidth,
       height: window.innerHeight,
     };
-    const panelWidth = Math.min(rect.width || window.innerWidth, getPanelWidth());
+    const panelWidth = isPanelCollapsed ? 0 : Math.min(rect.width || window.innerWidth, getPanelWidth());
     root.style.setProperty("--tw-wa-app-left", `${rect.left}px`);
     root.style.setProperty("--tw-wa-app-top", `${rect.top}px`);
     root.style.setProperty("--tw-wa-app-right", `${Math.max(0, window.innerWidth - rect.right)}px`);
@@ -730,6 +786,16 @@ export function mountOverlay(opts: OverlayOpts) {
     root.style.setProperty("--tw-wa-app-width", `${rect.width || window.innerWidth}px`);
     root.style.setProperty("--tw-wa-app-height", `${rect.height || window.innerHeight}px`);
     root.style.setProperty("--tw-wa-panel-effective-width", `${panelWidth}px`);
+  };
+
+  const setPanelCollapsed = (collapsed: boolean) => {
+    isPanelCollapsed = collapsed;
+    root.classList.toggle("tw-wa-panel-collapsed", collapsed);
+    document.documentElement.classList.toggle("tw-wa-panel-collapsed", collapsed);
+    document.body?.classList.toggle("tw-wa-panel-collapsed", collapsed);
+    panelToggleButton.setAttribute("aria-expanded", String(!collapsed));
+    panelToggleButton.title = collapsed ? "Show panel" : "Hide panel";
+    updateOverlayBounds();
   };
 
   const updateChatSnapshot = () => {
@@ -770,10 +836,16 @@ export function mountOverlay(opts: OverlayOpts) {
     });
   });
 
+  panelToggleButton.addEventListener("click", () => {
+    setPanelCollapsed(!isPanelCollapsed);
+  });
+
   const toggleCollapsible = (toggle: HTMLButtonElement, content: HTMLElement) => {
     const isExpanded = toggle.getAttribute("aria-expanded") === "true";
-    toggle.setAttribute("aria-expanded", String(!isExpanded));
-    content.classList.toggle("is-open", !isExpanded);
+    const nextExpanded = !isExpanded;
+    toggle.setAttribute("aria-expanded", String(nextExpanded));
+    content.classList.toggle("is-open", nextExpanded);
+    content.toggleAttribute("hidden", !nextExpanded);
   };
 
   additionalToggle.addEventListener("click", () => toggleCollapsible(additionalToggle, additionalContent));
@@ -920,7 +992,7 @@ export function mountOverlay(opts: OverlayOpts) {
 
   (async () => {
     ensureHeaderObserver();
-    updateOverlayBounds();
+    setPanelCollapsed(false);
     window.addEventListener("resize", updateOverlayBounds);
     setInterval(() => {
       ensureHeaderObserver();
