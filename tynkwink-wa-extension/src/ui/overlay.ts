@@ -43,12 +43,16 @@ export function mountOverlay(opts: OverlayOpts) {
       }
       body.tw-wa-overlay-active header {
         top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
-        margin-right: var(--tw-wa-panel-width);
+        right: var(--tw-wa-panel-width);
+        width: calc(100% - var(--tw-wa-panel-width));
+        box-sizing: border-box;
       }
       body.tw-wa-overlay-active main {
         top: calc(var(--tw-wa-topbar-height) + var(--tw-wa-pipeline-height));
         height: calc(100% - var(--tw-wa-topbar-height) - var(--tw-wa-pipeline-height));
-        margin-right: var(--tw-wa-panel-width);
+        right: var(--tw-wa-panel-width);
+        width: calc(100% - var(--tw-wa-panel-width));
+        box-sizing: border-box;
       }
       body.tw-wa-overlay-active #app {
         min-height: calc(100vh - var(--tw-wa-topbar-height) - var(--tw-wa-pipeline-height));
