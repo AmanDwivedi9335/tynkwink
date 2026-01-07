@@ -71,9 +71,36 @@ export type LoginPayload = {
   tenantId?: string | null;
 };
 
+export type ContactLookupPayload = {
+  phone: string;
+  name?: string | null;
+};
+
+export type CreateLeadPayload = {
+  name: string;
+  phone?: string;
+  email?: string;
+  company?: string;
+  notes?: string;
+  stageId?: string;
+  createdAt?: string;
+};
+
+export type CreateLeadInboxPayload = {
+  name: string;
+  phone: string;
+  email?: string;
+  company?: string;
+  notes?: string;
+  preferredStage?: string;
+};
+
 export type BgMessage =
   | { type: "AUTH_SAVE"; auth: AuthState }
   | { type: "AUTH_GET" }
   | { type: "AUTH_LOGIN"; payload: LoginPayload }
   | { type: "SYNC_CHAT"; payload: SyncPayload }
-  | { type: "EXTENSION_SUMMARY" };
+  | { type: "EXTENSION_SUMMARY" }
+  | { type: "CONTACT_LOOKUP"; payload: ContactLookupPayload }
+  | { type: "CREATE_LEAD"; payload: CreateLeadPayload }
+  | { type: "CREATE_LEAD_INBOX"; payload: CreateLeadInboxPayload };
