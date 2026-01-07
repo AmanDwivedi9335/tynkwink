@@ -77,7 +77,7 @@ router.get("/extension/contact-status", requireAuth, async (req, res) => {
     where: {
       tenantId,
       extractedPreviewJson: {
-        path: ["phone"],
+        path: "$.phone",
         equals: phone,
       },
     },
