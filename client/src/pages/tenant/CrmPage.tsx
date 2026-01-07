@@ -66,18 +66,17 @@ type CrmPipelineResponse = {
   leads: CrmLead[];
 };
 
-type Assignee = {
+type StaffMember = {
   id: string;
-  name: string;
   role: string;
+  isActive: boolean;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    isActive: boolean;
+  };
 };
-
-const assignees: Assignee[] = [
-  { id: "assignee-1", name: "Vijayant", role: "Sales Admin" },
-  { id: "assignee-2", name: "Simran Kaur", role: "Salesperson" },
-  { id: "assignee-3", name: "Karan Sethi", role: "Salesperson" },
-  { id: "assignee-4", name: "Priya Nair", role: "Sales Admin" },
-];
 
 const fallbackPipeline: CrmPipelineResponse = {
   stages: [
@@ -341,6 +340,7 @@ const formatLeadNotes = (notes: string) => {
 export default function CrmPage() {
   const [pipeline, setPipeline] = useState<CrmPipelineResponse | null>(null);
   const [leads, setLeads] = useState<CrmLead[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
@@ -379,6 +379,35 @@ export default function CrmPage() {
   }, []);
 
   const stages = pipeline?.stages ?? [];
+  const assignees = useMemo(
+    () =>
+      staff
+        .filter((member) => member.isActive && member.user.isActive)
+        .map((member) => ({
+          id: member.user.id,
+          name: member.user.name,
+          role: member.role,
+        })),
+    [staff]
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    api
+      .get("/api/staff")
+      .then((response) => {
+        if (!isMounted) return;
+        setStaff(response.data.staff ?? []);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setStaff([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const stageCounts = useMemo(() => {
     return stages.reduce<Record<string, number>>((acc, stage) => {
