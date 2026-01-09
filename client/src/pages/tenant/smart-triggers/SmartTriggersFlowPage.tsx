@@ -454,7 +454,11 @@ export default function SmartTriggersFlowPage() {
                           <Paper
                             elevation={0}
                             draggable
-                            onDragStart={() => setDraggedStepId(step.id)}
+                            onDragStart={(event) => {
+                              event.dataTransfer.setData("text/plain", step.id);
+                              event.dataTransfer.effectAllowed = "move";
+                              setDraggedStepId(step.id);
+                            }}
                             onDragEnd={() => setDraggedStepId(null)}
                             onDragOver={(event) => event.preventDefault()}
                             onDrop={() => handleStepDrop(step.id)}
