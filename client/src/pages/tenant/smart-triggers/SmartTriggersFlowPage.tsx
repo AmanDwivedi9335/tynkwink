@@ -30,9 +30,6 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../lib/api";
 import {
-  SmartTriggerFlow,
-  SmartTriggerFlowSummary,
-  SmartTriggerStep,
   createDefaultSteps,
   getProcessedLeads,
   getRunStateLabel,
@@ -40,6 +37,7 @@ import {
   stepIconMap,
   stepTemplates,
 } from "./utils";
+import type { SmartTriggerFlow, SmartTriggerFlowSummary, SmartTriggerStep } from "./utils";
 
 export default function SmartTriggersFlowPage() {
   const { flowId } = useParams<{ flowId: string }>();
