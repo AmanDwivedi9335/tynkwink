@@ -8,7 +8,8 @@ import TenantLayout from "./layouts/TenantLayout";
 import CrmPage from "./pages/tenant/CrmPage";
 import AutoFollowupsPage from "./pages/tenant/AutoFollowupsPage";
 import KnowledgeBasePage from "./pages/tenant/KnowledgeBasePage";
-import SmartTriggersPage from "./pages/tenant/SmartTriggersPage";
+import SmartTriggersFlowPage from "./pages/tenant/smart-triggers/SmartTriggersFlowPage";
+import SmartTriggersListPage from "./pages/tenant/smart-triggers/SmartTriggersListPage";
 import AnalyticsPage from "./pages/tenant/AnalyticsPage";
 import WhatsAppPage from "./pages/tenant/WhatsAppPage";
 import IntegrationsPage from "./pages/tenant/IntegrationsPage";
@@ -43,7 +44,8 @@ function App() {
         <Route path="crm" element={<CrmPage />} />
         <Route path="auto-followups" element={<AutoFollowupsPage />} />
         <Route path="knowledge-base" element={<KnowledgeBasePage />} />
-        <Route path="smart-triggers" element={<SmartTriggersPage />} />
+        <Route path="smart-triggers" element={<SmartTriggersListPage />} />
+        <Route path="smart-triggers/:flowId" element={<SmartTriggersFlowPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="whatsapp" element={<WhatsAppPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />

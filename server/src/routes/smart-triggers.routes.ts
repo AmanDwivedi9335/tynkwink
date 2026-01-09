@@ -121,4 +121,25 @@ router.put("/smart-triggers/:id", requireAuth, async (req, res) => {
   return res.json({ flow });
 });
 
+router.delete("/smart-triggers/:id", requireAuth, async (req, res) => {
+  const tenantId = req.auth?.tenantId;
+  if (!tenantId) {
+    return res.status(403).json({ message: "Tenant context required" });
+  }
+
+  const existing = await prisma.smartTriggerFlow.findFirst({
+    where: { id: req.params.id, tenantId },
+  });
+
+  if (!existing) {
+    return res.status(404).json({ message: "Flow not found" });
+  }
+
+  await prisma.smartTriggerFlow.delete({
+    where: { id: existing.id },
+  });
+
+  return res.status(204).send();
+});
+
 export default router;
