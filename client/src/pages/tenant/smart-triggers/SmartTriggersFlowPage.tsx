@@ -49,6 +49,8 @@ export default function SmartTriggersFlowPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
 
   const loadFlow = async (targetId: string) => {
     const response = await api.get<{ flow: SmartTriggerFlow }>(`/api/smart-triggers/${targetId}`);
@@ -81,6 +83,17 @@ export default function SmartTriggersFlowPage() {
     });
   }, [flowId]);
 
+  useEffect(() => {
+    if (!activeFlow?.steps.length) {
+      setSelectedStepId(null);
+      return;
+    }
+    if (selectedStepId && activeFlow.steps.some((step) => step.id === selectedStepId)) {
+      return;
+    }
+    setSelectedStepId(activeFlow.steps[0].id);
+  }, [activeFlow?.steps, selectedStepId]);
+
   const handleFlowChange = (selectedId: string) => {
     if (selectedId === activeFlow?.id) {
       return;
@@ -108,6 +121,7 @@ export default function SmartTriggersFlowPage() {
       ...activeFlow,
       steps: [...activeFlow.steps, nextStep],
     });
+    setSelectedStepId(nextStep.id);
     handleCloseStepMenu();
   };
 
@@ -115,10 +129,14 @@ export default function SmartTriggersFlowPage() {
     if (!activeFlow) {
       return;
     }
+    const nextSteps = activeFlow.steps.filter((step) => step.id !== stepId);
     setActiveFlow({
       ...activeFlow,
-      steps: activeFlow.steps.filter((step) => step.id !== stepId),
+      steps: nextSteps,
     });
+    if (selectedStepId === stepId) {
+      setSelectedStepId(nextSteps[0]?.id ?? null);
+    }
   };
 
   const handleStepChange = (stepId: string, field: "title" | "detail", value: string) => {
@@ -129,6 +147,21 @@ export default function SmartTriggersFlowPage() {
       ...activeFlow,
       steps: activeFlow.steps.map((step) => (step.id === stepId ? { ...step, [field]: value } : step)),
     });
+  };
+
+  const handleStepDrop = (targetId: string) => {
+    if (!activeFlow || !draggedStepId || draggedStepId === targetId) {
+      return;
+    }
+    const steps = [...activeFlow.steps];
+    const fromIndex = steps.findIndex((step) => step.id === draggedStepId);
+    const toIndex = steps.findIndex((step) => step.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) {
+      return;
+    }
+    const [moved] = steps.splice(fromIndex, 1);
+    steps.splice(toIndex, 0, moved);
+    setActiveFlow({ ...activeFlow, steps });
   };
 
   const handleSave = async (status?: SmartTriggerFlow["status"]) => {
@@ -173,13 +206,16 @@ export default function SmartTriggersFlowPage() {
     if (!activeFlow) {
       return;
     }
+    const nextSteps = [...activeFlow.steps, ...createDefaultSteps()];
     setActiveFlow({
       ...activeFlow,
-      steps: [...activeFlow.steps, ...createDefaultSteps()],
+      steps: nextSteps,
     });
+    setSelectedStepId(nextSteps[0]?.id ?? null);
   };
 
   const isPublished = activeFlow?.status === "PUBLISHED";
+  const selectedStep = activeFlow?.steps.find((step) => step.id === selectedStepId) ?? null;
 
   return (
     <Box sx={{ display: "grid", gap: 3 }}>
@@ -333,7 +369,7 @@ export default function SmartTriggersFlowPage() {
                 borderColor: "divider",
                 backgroundColor: "rgba(255,255,255,0.9)",
                 overflow: "hidden",
-                minHeight: { xs: 360, md: 440 },
+                minHeight: { xs: 420, md: 520 },
               }}
             >
               <Box
@@ -350,121 +386,208 @@ export default function SmartTriggersFlowPage() {
                   Preview mode
                 </Button>
               </Box>
-              <Box sx={{ position: "relative", overflowX: "auto", zIndex: 1 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: { xs: 2, md: 3 },
-                    px: { xs: 2, md: 4 },
-                    py: { xs: 4, md: 6 },
-                    minHeight: { xs: 320, md: 360 },
-                    width: "fit-content",
-                  }}
-                >
-                  <Paper
-                    elevation={0}
+              <Box
+                sx={{
+                  position: "relative",
+                  zIndex: 1,
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 320px" },
+                  gap: { xs: 2, lg: 3 },
+                  px: { xs: 2, md: 4 },
+                  py: { xs: 3, md: 4 },
+                }}
+              >
+                <Box sx={{ overflowX: "auto" }}>
+                  <Box
                     sx={{
-                      borderRadius: 2,
-                      border: "1px solid",
-                      borderColor: "divider",
-                      p: 2,
-                      minWidth: 220,
-                      backgroundColor: "background.paper",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: { xs: 2, md: 3 },
+                      minHeight: { xs: 320, md: 380 },
+                      width: "fit-content",
+                      pb: 2,
                     }}
                   >
-                    <Stack spacing={1}>
-                      <Chip label="Start" size="small" color="primary" />
-                      <Typography variant="subtitle2" fontWeight={600}>
-                        Entry point
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Your flow begins from this block. Connect it to trigger automation.
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                  {activeFlow.steps.map((step, index) => (
-                    <Box key={step.id} sx={{ display: "flex", alignItems: "center", gap: { xs: 2, md: 3 } }}>
-                      <Box sx={{ width: { xs: 40, md: 56 }, height: 2, bgcolor: "divider", position: "relative" }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: 2,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        p: 2,
+                        minWidth: 220,
+                        backgroundColor: "background.paper",
+                      }}
+                    >
+                      <Stack spacing={1}>
+                        <Chip label="Start" size="small" color="primary" />
+                        <Typography variant="subtitle2" fontWeight={600}>
+                          Entry point
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Your flow begins from this block. Connect it to trigger automation.
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                    {activeFlow.steps.map((step, index) => {
+                      const isSelected = selectedStepId === step.id;
+                      return (
                         <Box
-                          sx={{
-                            position: "absolute",
-                            right: -6,
-                            top: -5,
-                            width: 12,
-                            height: 12,
-                            borderRadius: "50%",
-                            border: "2px solid",
-                            borderColor: "primary.main",
-                            bgcolor: "background.paper",
-                          }}
-                        />
-                      </Box>
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          borderRadius: 2,
-                          border: "1px solid",
-                          borderColor: "divider",
-                          p: 2,
-                          display: "grid",
-                          gap: 1.5,
-                          minWidth: 260,
-                          maxWidth: 320,
-                          backgroundColor: "background.paper",
-                          boxShadow: "0 12px 30px rgba(28, 34, 66, 0.08)",
-                        }}
-                      >
-                        <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                          <Avatar sx={{ bgcolor: "primary.light", color: "primary.main" }}>
-                            {stepIconMap[step.type]}
-                          </Avatar>
-                          <Box sx={{ flex: 1, display: "grid", gap: 1 }}>
-                            <Typography variant="overline" color="text.secondary">
-                              Step {index + 1} · {step.label}
-                            </Typography>
-                            <TextField
-                              label="Title"
-                              value={step.title}
-                              onChange={(event) => handleStepChange(step.id, "title", event.target.value)}
-                              size="small"
+                          key={step.id}
+                          sx={{ display: "flex", alignItems: "center", gap: { xs: 2, md: 3 } }}
+                        >
+                          <Box sx={{ width: { xs: 40, md: 56 }, height: 2, bgcolor: "divider", position: "relative" }}>
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                right: -6,
+                                top: -5,
+                                width: 12,
+                                height: 12,
+                                borderRadius: "50%",
+                                border: "2px solid",
+                                borderColor: "primary.main",
+                                bgcolor: "background.paper",
+                              }}
                             />
-                            <TextField
-                              label="Details"
-                              value={step.detail}
-                              onChange={(event) => handleStepChange(step.id, "detail", event.target.value)}
-                              multiline
-                              minRows={2}
-                              size="small"
-                            />
-                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                              {step.tags.map((tag) => (
-                                <Chip
-                                  key={`${step.id}-${tag}`}
-                                  label={tag}
-                                  size="small"
-                                  color={tag.toLowerCase().includes("whatsapp") ? "success" : "default"}
-                                  variant={tag.toLowerCase().includes("whatsapp") ? "filled" : "outlined"}
-                                />
-                              ))}
-                            </Stack>
                           </Box>
-                          <IconButton size="small" onClick={() => handleRemoveStep(step.id)}>
-                            <DeleteOutlineIcon fontSize="small" />
-                          </IconButton>
-                        </Stack>
-                      </Paper>
-                    </Box>
-                  ))}
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={handleOpenStepMenu}
-                    sx={{ borderRadius: 3, alignSelf: "center", whiteSpace: "nowrap" }}
-                  >
-                    Add module
-                  </Button>
+                          <Paper
+                            elevation={0}
+                            draggable
+                            onDragStart={() => setDraggedStepId(step.id)}
+                            onDragEnd={() => setDraggedStepId(null)}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={() => handleStepDrop(step.id)}
+                            onClick={() => setSelectedStepId(step.id)}
+                            sx={{
+                              borderRadius: 2,
+                              border: "1px solid",
+                              borderColor: isSelected ? "primary.main" : "divider",
+                              p: 2,
+                              display: "grid",
+                              gap: 1.5,
+                              minWidth: 240,
+                              maxWidth: 300,
+                              backgroundColor: "background.paper",
+                              boxShadow: "0 12px 30px rgba(28, 34, 66, 0.08)",
+                              cursor: draggedStepId === step.id ? "grabbing" : "grab",
+                              transition: "border-color 0.2s ease",
+                            }}
+                          >
+                            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                              <Avatar sx={{ bgcolor: "primary.light", color: "primary.main" }}>
+                                {stepIconMap[step.type]}
+                              </Avatar>
+                              <Box sx={{ flex: 1, display: "grid", gap: 1 }}>
+                                <Typography variant="overline" color="text.secondary">
+                                  Step {index + 1} · {step.label}
+                                </Typography>
+                                <Typography variant="subtitle1" fontWeight={600}>
+                                  {step.title}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {step.detail}
+                                </Typography>
+                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                  {step.tags.map((tag) => (
+                                    <Chip
+                                      key={`${step.id}-${tag}`}
+                                      label={tag}
+                                      size="small"
+                                      color={tag.toLowerCase().includes("whatsapp") ? "success" : "default"}
+                                      variant={tag.toLowerCase().includes("whatsapp") ? "filled" : "outlined"}
+                                    />
+                                  ))}
+                                </Stack>
+                              </Box>
+                            </Stack>
+                          </Paper>
+                        </Box>
+                      );
+                    })}
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={handleOpenStepMenu}
+                      sx={{ borderRadius: 3, alignSelf: "center", whiteSpace: "nowrap" }}
+                    >
+                      Add module
+                    </Button>
+                  </Box>
                 </Box>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: 2,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    p: 2,
+                    minHeight: { xs: 220, lg: 360 },
+                    backgroundColor: "background.paper",
+                    display: "grid",
+                    gap: 2,
+                    alignContent: "start",
+                  }}
+                >
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Step details
+                  </Typography>
+                  {selectedStep ? (
+                    <>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar sx={{ bgcolor: "primary.light", color: "primary.main" }}>
+                          {stepIconMap[selectedStep.type]}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="overline" color="text.secondary">
+                            {selectedStep.label}
+                          </Typography>
+                          <Typography variant="subtitle2" fontWeight={600}>
+                            Step {activeFlow?.steps.findIndex((step) => step.id === selectedStep.id) + 1}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <TextField
+                        label="Title"
+                        value={selectedStep.title}
+                        onChange={(event) => handleStepChange(selectedStep.id, "title", event.target.value)}
+                        size="small"
+                      />
+                      <TextField
+                        label="Details"
+                        value={selectedStep.detail}
+                        onChange={(event) => handleStepChange(selectedStep.id, "detail", event.target.value)}
+                        multiline
+                        minRows={3}
+                        size="small"
+                      />
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        {selectedStep.tags.map((tag) => (
+                          <Chip
+                            key={`${selectedStep.id}-${tag}`}
+                            label={tag}
+                            size="small"
+                            color={tag.toLowerCase().includes("whatsapp") ? "success" : "default"}
+                            variant={tag.toLowerCase().includes("whatsapp") ? "filled" : "outlined"}
+                          />
+                        ))}
+                      </Stack>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<DeleteOutlineIcon />}
+                        onClick={() => handleRemoveStep(selectedStep.id)}
+                        sx={{ justifySelf: "flex-start" }}
+                      >
+                        Remove step
+                      </Button>
+                    </>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Select a step to view and edit its details.
+                    </Typography>
+                  )}
+                </Paper>
               </Box>
             </Box>
           </Paper>
