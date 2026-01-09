@@ -18,13 +18,8 @@ import LaunchIcon from "@mui/icons-material/Launch";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../lib/api";
-import {
-  SmartTriggerFlowSummary,
-  createDefaultSteps,
-  getProcessedLeads,
-  getRunStateLabel,
-  getRunStateTone,
-} from "./utils";
+import { createDefaultSteps, getProcessedLeads, getRunStateLabel, getRunStateTone } from "./utils";
+import type { SmartTriggerFlowSummary } from "./utils";
 
 export default function SmartTriggersListPage() {
   const [flows, setFlows] = useState<SmartTriggerFlowSummary[]>([]);
