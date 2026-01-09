@@ -4,14 +4,25 @@ import { getEmailProvider } from "../providers/email";
 import { randomNonce, signApprovalToken, hashToken } from "../security/tokens";
 import { writeAuditLog } from "../security/audit";
 import { safeTruncate } from "../security/encryption";
+import { isPrismaConnectionError } from "../utils/prismaErrors";
 
 const MAX_DIGEST_LEADS = 25;
 
 export async function sendApprovalDigests() {
   const now = new Date();
-  const tenants = await prisma.tenantSettings.findMany({
-    include: { tenant: { include: { users: { include: { user: true } } } } },
-  });
+  let tenants;
+  try {
+    tenants = await prisma.tenantSettings.findMany({
+      include: { tenant: { include: { users: { include: { user: true } } } } },
+    });
+  } catch (error) {
+    if (isPrismaConnectionError(error)) {
+      console.warn("Skipping approval digest: database unavailable.", error);
+      return;
+    }
+
+    throw error;
+  }
 
   const emailProvider = getEmailProvider();
 
