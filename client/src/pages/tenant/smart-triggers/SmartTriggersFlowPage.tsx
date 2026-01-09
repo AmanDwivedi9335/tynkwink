@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutline";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
@@ -51,6 +52,7 @@ export default function SmartTriggersFlowPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
+  const [isStepDetailsOpen, setIsStepDetailsOpen] = useState(true);
 
   const loadFlow = async (targetId: string) => {
     const response = await api.get<{ flow: SmartTriggerFlow }>(`/api/smart-triggers/${targetId}`);
@@ -78,6 +80,7 @@ export default function SmartTriggersFlowPage() {
     if (!flowId) {
       return;
     }
+    setIsStepDetailsOpen(true);
     loadFlow(flowId).catch(() => {
       setError("Unable to load the selected flow.");
     });
@@ -86,13 +89,17 @@ export default function SmartTriggersFlowPage() {
   useEffect(() => {
     if (!activeFlow?.steps.length) {
       setSelectedStepId(null);
+      setIsStepDetailsOpen(false);
+      return;
+    }
+    if (!isStepDetailsOpen) {
       return;
     }
     if (selectedStepId && activeFlow.steps.some((step) => step.id === selectedStepId)) {
       return;
     }
     setSelectedStepId(activeFlow.steps[0].id);
-  }, [activeFlow?.steps, selectedStepId]);
+  }, [activeFlow?.steps, selectedStepId, isStepDetailsOpen]);
 
   const handleFlowChange = (selectedId: string) => {
     if (selectedId === activeFlow?.id) {
@@ -122,6 +129,7 @@ export default function SmartTriggersFlowPage() {
       steps: [...activeFlow.steps, nextStep],
     });
     setSelectedStepId(nextStep.id);
+    setIsStepDetailsOpen(true);
     handleCloseStepMenu();
   };
 
@@ -136,6 +144,7 @@ export default function SmartTriggersFlowPage() {
     });
     if (selectedStepId === stepId) {
       setSelectedStepId(nextSteps[0]?.id ?? null);
+      setIsStepDetailsOpen(nextSteps.length > 0);
     }
   };
 
@@ -462,7 +471,10 @@ export default function SmartTriggersFlowPage() {
                             onDragEnd={() => setDraggedStepId(null)}
                             onDragOver={(event) => event.preventDefault()}
                             onDrop={() => handleStepDrop(step.id)}
-                            onClick={() => setSelectedStepId(step.id)}
+                            onClick={() => {
+                              setSelectedStepId(step.id);
+                              setIsStepDetailsOpen(true);
+                            }}
                             sx={{
                               borderRadius: 2,
                               border: "1px solid",
@@ -533,9 +545,21 @@ export default function SmartTriggersFlowPage() {
                     alignContent: "start",
                   }}
                 >
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    Step details
-                  </Typography>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between">
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      Step details
+                    </Typography>
+                    <IconButton
+                      aria-label="Close step details"
+                      size="small"
+                      onClick={() => {
+                        setSelectedStepId(null);
+                        setIsStepDetailsOpen(false);
+                      }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
                   {selectedStep ? (
                     <>
                       <Stack direction="row" spacing={1.5} alignItems="center">
