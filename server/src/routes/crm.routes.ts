@@ -34,6 +34,17 @@ const leadSchema = z.object({
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
     z.string().trim().optional()
   ),
+  assigneeId: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().optional()
+  ),
+});
+
+const leadAssignmentSchema = z.object({
+  assigneeId: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+    z.string().trim().nullable()
+  ),
 });
 
 
@@ -45,6 +56,7 @@ function formatLead(lead: {
   email: string | null;
   company: string | null;
   notes: string | null;
+  assignedTo: string | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -56,6 +68,7 @@ function formatLead(lead: {
   return {
     id: lead.id,
     stageId: lead.stageId,
+    assigneeId: lead.assignedTo ?? null,
     personal: {
       name: lead.name ?? "",
       phone: lead.phone ?? "",
@@ -79,6 +92,20 @@ function formatLead(lead: {
     nextReminder: "Not scheduled",
     daysInStage,
   };
+}
+
+async function resolveAssigneeId(tenantId: string, assigneeId?: string | null) {
+  if (!assigneeId) return null;
+  const membership = await prisma.tenantUser.findFirst({
+    where: {
+      tenantId,
+      userId: assigneeId,
+      isActive: true,
+      user: { isActive: true },
+    },
+  });
+
+  return membership?.userId ?? null;
 }
 
 router.get("/crm/pipeline", requireAuth, async (req, res) => {
@@ -114,7 +141,7 @@ router.post("/crm/leads", requireAuth, async (req, res) => {
     return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
   }
 
-  const { name, phone, email, company, notes, stageId, createdAt } = parsed.data;
+  const { name, phone, email, company, notes, stageId, createdAt, assigneeId } = parsed.data;
 
   const stages = await ensureStages(tenantId);
   const resolvedStageId = stageId ?? stages[0]?.id;
@@ -129,6 +156,11 @@ router.post("/crm/leads", requireAuth, async (req, res) => {
 
   if (!stage) {
     return res.status(400).json({ message: "Invalid stage selected" });
+  }
+
+  const resolvedAssigneeId = await resolveAssigneeId(tenantId, assigneeId);
+  if (assigneeId && !resolvedAssigneeId) {
+    return res.status(400).json({ message: "Invalid assignee selected" });
   }
 
   let createdAtDate: Date | undefined;
@@ -149,12 +181,43 @@ router.post("/crm/leads", requireAuth, async (req, res) => {
       email,
       company,
       notes,
+      assignedTo: resolvedAssigneeId,
       source: InboundSource.MANUAL,
       createdAt: createdAtDate,
     },
   });
 
   return res.status(201).json({ lead: formatLead(lead) });
+});
+
+router.patch("/crm/leads/:leadId/assignment", requireAuth, async (req, res) => {
+  const tenantId = req.auth?.tenantId;
+  if (!tenantId) {
+    return res.status(403).json({ message: "Tenant context required" });
+  }
+
+  const parsed = leadAssignmentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
+  }
+
+  const { leadId } = req.params;
+  const lead = await prisma.lead.findFirst({ where: { id: leadId, tenantId } });
+  if (!lead) {
+    return res.status(404).json({ message: "Lead not found" });
+  }
+
+  const resolvedAssigneeId = await resolveAssigneeId(tenantId, parsed.data.assigneeId ?? null);
+  if (parsed.data.assigneeId && !resolvedAssigneeId) {
+    return res.status(400).json({ message: "Invalid assignee selected" });
+  }
+
+  const updated = await prisma.lead.update({
+    where: { id: lead.id },
+    data: { assignedTo: resolvedAssigneeId },
+  });
+
+  return res.json({ lead: formatLead(updated) });
 });
 
 export default router;

@@ -438,11 +438,19 @@ export default function CrmPage() {
   };
 
   const handleAssigneeChange = (leadId: string, nextAssigneeId: string) => {
+    const previousAssigneeId =
+      leads.find((lead) => lead.id === leadId)?.assigneeId ?? null;
+    const nextValue = nextAssigneeId || null;
     setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === leadId ? { ...lead, assigneeId: nextAssigneeId || null } : lead
-      )
+      prev.map((lead) => (lead.id === leadId ? { ...lead, assigneeId: nextValue } : lead))
     );
+    api.patch(`/api/crm/leads/${leadId}/assignment`, { assigneeId: nextValue }).catch(() => {
+      setLeads((prev) =>
+        prev.map((lead) =>
+          lead.id === leadId ? { ...lead, assigneeId: previousAssigneeId } : lead
+        )
+      );
+    });
   };
 
   const handleOpenAddLead = () => {
@@ -485,14 +493,11 @@ export default function CrmPage() {
         createdAt: leadForm.createdAt || undefined,
         stageId: leadForm.stageId || undefined,
         notes: leadForm.notes.trim() || undefined,
+        assigneeId: leadForm.assigneeId || undefined,
       };
 
       const response = await api.post<{ lead: CrmLead }>("/api/crm/leads", payload);
-      const newLead = {
-        ...response.data.lead,
-        assigneeId: leadForm.assigneeId || null,
-      };
-      setLeads((prev) => [newLead, ...prev]);
+      setLeads((prev) => [response.data.lead, ...prev]);
       if (!selectedStageId) {
         setSelectedStageId(response.data.lead.stageId);
       }
