@@ -55,7 +55,6 @@ export default function SmartTriggersFlowPage() {
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
   const [isStepDetailsOpen, setIsStepDetailsOpen] = useState(true);
   const [isFlowSettingsOpen, setIsFlowSettingsOpen] = useState(false);
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   const loadFlow = async (targetId: string) => {
     const response = await api.get<{ flow: SmartTriggerFlow }>(`/api/smart-triggers/${targetId}`);
@@ -302,19 +301,8 @@ export default function SmartTriggersFlowPage() {
               overflow: "hidden",
             }}
           >
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              justifyContent="space-between"
-              gap={2}
-              sx={{
-                px: { xs: 2.5, md: 3 },
-                py: { xs: 2, md: 2.5 },
-                borderBottom: "1px solid",
-                borderColor: "divider",
-                backgroundColor: "background.paper",
-              }}
-            >
-              <Box sx={{ flex: 1, minWidth: 220 }}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
+              <Box>
                 <Typography variant="h6" fontWeight={700}>
                   Automation modules
                 </Typography>
@@ -322,15 +310,11 @@ export default function SmartTriggersFlowPage() {
                   Update triggers and actions. Remove any module to reshape the lead journey.
                 </Typography>
               </Box>
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1}
-                alignItems={{ xs: "stretch", sm: "center" }}
-              >
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                 <Button variant="outlined" onClick={handleCreateModuleSet}>
                   Add full template
                 </Button>
-                <Button variant="contained" onClick={handleOpenStepMenu} startIcon={<AddIcon />}>
+                <Button variant="outlined" onClick={handleOpenStepMenu}>
                   Add module
                 </Button>
               </Stack>
@@ -339,9 +323,13 @@ export default function SmartTriggersFlowPage() {
             <Box
               sx={{
                 position: "relative",
-                backgroundColor: "rgba(244, 246, 251, 0.8)",
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                backgroundColor: "rgba(255,255,255,0.9)",
+                overflow: "hidden",
                 minHeight: { xs: 520, md: 720 },
-                height: { md: "calc(100vh - 250px)" },
+                height: { md: "calc(100vh - 280px)" },
               }}
             >
               <Box
