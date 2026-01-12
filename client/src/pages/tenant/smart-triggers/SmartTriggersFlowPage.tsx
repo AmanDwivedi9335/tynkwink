@@ -355,6 +355,8 @@ export default function SmartTriggersFlowPage() {
                 overflow: "hidden",
                 minHeight: { xs: 520, md: 720 },
                 height: { md: "calc(100vh - 280px)" },
+                display: "flex",
+                flexDirection: "column",
               }}
             >
               <Stack
@@ -388,6 +390,9 @@ export default function SmartTriggersFlowPage() {
                   gap: { xs: 2, lg: 3 },
                   px: { xs: 2, md: 4 },
                   py: { xs: 3, md: 4 },
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: "auto",
                 }}
               >
                 <Paper
