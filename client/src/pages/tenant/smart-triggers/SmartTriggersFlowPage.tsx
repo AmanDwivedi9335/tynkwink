@@ -54,6 +54,8 @@ export default function SmartTriggersFlowPage() {
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
   const [isStepDetailsOpen, setIsStepDetailsOpen] = useState(true);
+  const [isFlowSettingsOpen, setIsFlowSettingsOpen] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   const loadFlow = async (targetId: string) => {
     const response = await api.get<{ flow: SmartTriggerFlow }>(`/api/smart-triggers/${targetId}`);
@@ -273,6 +275,9 @@ export default function SmartTriggersFlowPage() {
           >
             {isSaving ? "Saving..." : "Save updates"}
           </Button>
+          <Button variant="outlined" onClick={() => setIsFlowSettingsOpen(true)} disabled={!activeFlow}>
+            Flow settings
+          </Button>
         </Stack>
       </Stack>
 
@@ -294,71 +299,22 @@ export default function SmartTriggersFlowPage() {
               borderRadius: 3,
               border: "1px solid",
               borderColor: "divider",
-              p: { xs: 2.5, md: 3 },
-              display: "grid",
-              gap: 2,
+              overflow: "hidden",
             }}
           >
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Flow overview
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Manage metadata, ownership, and the operational status of the automation.
-                </Typography>
-              </Box>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                <Chip label={getRunStateLabel(activeFlow.status)} color={getRunStateTone(activeFlow.status)} />
-                <Chip label={`${getProcessedLeads(activeFlow.id)} leads processed`} variant="outlined" />
-              </Stack>
-            </Stack>
-            <Divider />
-            <Stack spacing={2}>
-              <TextField
-                label="Flow name"
-                value={activeFlow.name}
-                onChange={(event) => setActiveFlow({ ...activeFlow, name: event.target.value })}
-              />
-              <TextField
-                label="Description"
-                value={activeFlow.description ?? ""}
-                onChange={(event) => setActiveFlow({ ...activeFlow, description: event.target.value })}
-                multiline
-                minRows={2}
-              />
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "center" }}>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleOpenStepMenu}>
-                  Add module
-                </Button>
-                <Button variant="outlined" onClick={handleCreateModuleSet}>
-                  Add full template
-                </Button>
-                <Button
-                  variant="text"
-                  color="error"
-                  startIcon={<DeleteOutlineIcon />}
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  Delete flow
-                </Button>
-              </Stack>
-            </Stack>
-          </Paper>
-
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: 3,
-              border: "1px solid",
-              borderColor: "divider",
-              p: { xs: 2.5, md: 3 },
-              display: "grid",
-              gap: 2,
-            }}
-          >
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
-              <Box>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              justifyContent="space-between"
+              gap={2}
+              sx={{
+                px: { xs: 2.5, md: 3 },
+                py: { xs: 2, md: 2.5 },
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                backgroundColor: "background.paper",
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 220 }}>
                 <Typography variant="h6" fontWeight={700}>
                   Automation modules
                 </Typography>
@@ -366,36 +322,63 @@ export default function SmartTriggersFlowPage() {
                   Update triggers and actions. Remove any module to reshape the lead journey.
                 </Typography>
               </Box>
-              <Button variant="outlined" onClick={handleOpenStepMenu}>
-                Add module
-              </Button>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                alignItems={{ xs: "stretch", sm: "center" }}
+              >
+                <Button variant="outlined" onClick={handleCreateModuleSet}>
+                  Add full template
+                </Button>
+                <Button variant="contained" onClick={handleOpenStepMenu} startIcon={<AddIcon />}>
+                  Add module
+                </Button>
+              </Stack>
             </Stack>
 
             <Box
               sx={{
                 position: "relative",
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-                backgroundColor: "rgba(255,255,255,0.9)",
-                overflow: "hidden",
-                minHeight: { xs: 420, md: 520 },
+                backgroundColor: "rgba(244, 246, 251, 0.8)",
+                minHeight: { xs: 520, md: 720 },
+                height: { md: "calc(100vh - 250px)" },
               }}
             >
               <Box
                 sx={{
                   position: "absolute",
                   inset: 0,
-                  backgroundImage: "radial-gradient(rgba(93, 74, 184, 0.2) 1px, transparent 1px)",
-                  backgroundSize: "20px 20px",
-                  opacity: 0.7,
+                  backgroundImage: "radial-gradient(rgba(90, 99, 120, 0.18) 1px, transparent 1px)",
+                  backgroundSize: "22px 22px",
                 }}
               />
-              <Box sx={{ position: "absolute", top: 16, right: 16, zIndex: 1 }}>
-                <Button size="small" variant="outlined">
-                  Preview mode
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                alignItems={{ xs: "flex-start", md: "center" }}
+                justifyContent="space-between"
+                sx={{
+                  position: "relative",
+                  zIndex: 1,
+                  px: { xs: 2.5, md: 3 },
+                  py: 2,
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  backdropFilter: "blur(6px)",
+                }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Chip label={getRunStateLabel(activeFlow.status)} color={getRunStateTone(activeFlow.status)} />
+                  <Chip label={`${getProcessedLeads(activeFlow.id)} leads processed`} variant="outlined" />
+                </Stack>
+                <Button
+                  size="small"
+                  variant={isPreviewMode ? "contained" : "outlined"}
+                  onClick={() => setIsPreviewMode((prev) => !prev)}
+                >
+                  {isPreviewMode ? "Exit preview" : "Preview mode"}
                 </Button>
-              </Box>
+              </Stack>
               <Box
                 sx={{
                   position: "relative",
@@ -427,6 +410,7 @@ export default function SmartTriggersFlowPage() {
                         p: 2,
                         minWidth: 220,
                         backgroundColor: "background.paper",
+                        boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
                       }}
                     >
                       <Stack spacing={1}>
@@ -486,9 +470,11 @@ export default function SmartTriggersFlowPage() {
                               minWidth: 240,
                               maxWidth: 300,
                               backgroundColor: "background.paper",
-                              boxShadow: "0 12px 30px rgba(28, 34, 66, 0.08)",
+                              boxShadow: isSelected
+                                ? "0 16px 30px rgba(37, 99, 235, 0.18)"
+                                : "0 12px 30px rgba(15, 23, 42, 0.08)",
                               cursor: draggedStepId === step.id ? "grabbing" : "grab",
-                              transition: "border-color 0.2s ease",
+                              transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                             }}
                           >
                             <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -523,10 +509,15 @@ export default function SmartTriggersFlowPage() {
                       );
                     })}
                     <Button
-                      variant="contained"
+                      variant="outlined"
                       startIcon={<AddIcon />}
                       onClick={handleOpenStepMenu}
-                      sx={{ borderRadius: 3, alignSelf: "center", whiteSpace: "nowrap" }}
+                      sx={{
+                        borderRadius: 3,
+                        alignSelf: "center",
+                        whiteSpace: "nowrap",
+                        backgroundColor: "background.paper",
+                      }}
                     >
                       Add module
                     </Button>
@@ -545,6 +536,7 @@ export default function SmartTriggersFlowPage() {
                       display: "grid",
                       gap: 2,
                       alignContent: "start",
+                      boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
                     }}
                   >
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -660,6 +652,48 @@ export default function SmartTriggersFlowPage() {
           </MenuItem>
         ))}
       </Menu>
+
+      <Dialog open={isFlowSettingsOpen} onClose={() => setIsFlowSettingsOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Flow settings</DialogTitle>
+        <DialogContent sx={{ display: "grid", gap: 2, mt: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Chip
+              label={getRunStateLabel(activeFlow?.status ?? "DRAFT")}
+              color={getRunStateTone(activeFlow?.status ?? "DRAFT")}
+            />
+            {activeFlow ? (
+              <Chip label={`${getProcessedLeads(activeFlow.id)} leads processed`} variant="outlined" />
+            ) : null}
+          </Stack>
+          <TextField
+            label="Flow name"
+            value={activeFlow?.name ?? ""}
+            onChange={(event) => activeFlow && setActiveFlow({ ...activeFlow, name: event.target.value })}
+          />
+          <TextField
+            label="Description"
+            value={activeFlow?.description ?? ""}
+            onChange={(event) => activeFlow && setActiveFlow({ ...activeFlow, description: event.target.value })}
+            multiline
+            minRows={3}
+          />
+          <Button
+            variant="text"
+            color="error"
+            startIcon={<DeleteOutlineIcon />}
+            onClick={() => {
+              setIsFlowSettingsOpen(false);
+              setDeleteOpen(true);
+            }}
+            sx={{ justifySelf: "flex-start" }}
+          >
+            Delete flow
+          </Button>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsFlowSettingsOpen(false)}>Done</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Delete flow</DialogTitle>
