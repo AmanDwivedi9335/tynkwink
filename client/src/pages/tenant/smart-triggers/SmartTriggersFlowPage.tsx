@@ -348,37 +348,25 @@ export default function SmartTriggersFlowPage() {
 
             <Box
               sx={{
-                position: "relative",
                 borderRadius: 2,
                 border: "1px solid",
                 borderColor: "divider",
-                backgroundColor: "rgba(255,255,255,0.9)",
+                backgroundColor: "grey.50",
                 overflow: "hidden",
                 minHeight: { xs: 520, md: 720 },
                 height: { md: "calc(100vh - 280px)" },
               }}
             >
-              <Box
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  backgroundImage: "radial-gradient(rgba(90, 99, 120, 0.18) 1px, transparent 1px)",
-                  backgroundSize: "22px 22px",
-                }}
-              />
               <Stack
                 direction={{ xs: "column", md: "row" }}
                 alignItems={{ xs: "flex-start", md: "center" }}
                 justifyContent="space-between"
                 sx={{
-                  position: "relative",
-                  zIndex: 1,
                   px: { xs: 2.5, md: 3 },
                   py: 2,
                   borderBottom: "1px solid",
                   borderColor: "divider",
-                  backgroundColor: "rgba(255,255,255,0.9)",
-                  backdropFilter: "blur(6px)",
+                  backgroundColor: "background.paper",
                 }}
               >
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
@@ -395,36 +383,47 @@ export default function SmartTriggersFlowPage() {
               </Stack>
               <Box
                 sx={{
-                  position: "relative",
-                  zIndex: 1,
                   display: "grid",
-                  gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 320px" },
+                  gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 340px" },
                   gap: { xs: 2, lg: 3 },
                   px: { xs: 2, md: 4 },
                   py: { xs: 3, md: 4 },
                 }}
               >
-                <Box sx={{ overflowX: "auto" }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: { xs: 2, md: 3 },
-                      minHeight: { xs: 320, md: 380 },
-                      width: "fit-content",
-                      pb: 2,
-                    }}
-                  >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: 2,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    p: { xs: 2, md: 2.5 },
+                    backgroundColor: "background.paper",
+                    display: "grid",
+                    gap: 2,
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap">
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        Flow builder
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Drag modules to reorder. Click a card to edit settings on the right.
+                      </Typography>
+                    </Box>
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenStepMenu}>
+                      Add module
+                    </Button>
+                  </Stack>
+                  <Box sx={{ display: "grid", gap: 2 }}>
                     <Paper
                       elevation={0}
                       sx={{
                         borderRadius: 2,
-                        border: "1px solid",
+                        border: "1px dashed",
                         borderColor: "divider",
                         p: 2,
-                        minWidth: 220,
-                        backgroundColor: "background.paper",
-                        boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
+                        backgroundColor: "grey.50",
                       }}
                     >
                       <Stack spacing={1}>
@@ -433,32 +432,38 @@ export default function SmartTriggersFlowPage() {
                           Entry point
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Your flow begins from this block. Connect it to trigger automation.
+                          Define what creates a new lead and kick off automation here.
                         </Typography>
                       </Stack>
                     </Paper>
                     {activeFlow.steps.map((step, index) => {
                       const isSelected = selectedStepId === step.id;
+                      const isLast = index === activeFlow.steps.length - 1;
                       return (
-                        <Box
-                          key={step.id}
-                          sx={{ display: "flex", alignItems: "center", gap: { xs: 2, md: 3 } }}
-                        >
-                          <Box sx={{ width: { xs: 40, md: 56 }, height: 2, bgcolor: "divider", position: "relative" }}>
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                right: -6,
-                                top: -5,
-                                width: 12,
-                                height: 12,
-                                borderRadius: "50%",
-                                border: "2px solid",
-                                borderColor: "primary.main",
-                                bgcolor: "background.paper",
-                              }}
-                            />
-                          </Box>
+                        <Box key={step.id} sx={{ position: "relative", pl: 3 }}>
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              left: 11,
+                              top: -16,
+                              bottom: isLast ? "50%" : -16,
+                              width: 2,
+                              bgcolor: "divider",
+                            }}
+                          />
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              left: 6,
+                              top: 16,
+                              width: 12,
+                              height: 12,
+                              borderRadius: "50%",
+                              border: "2px solid",
+                              borderColor: "primary.main",
+                              bgcolor: "background.paper",
+                            }}
+                          />
                           <Paper
                             elevation={0}
                             draggable
@@ -481,12 +486,10 @@ export default function SmartTriggersFlowPage() {
                               p: 2,
                               display: "grid",
                               gap: 1.5,
-                              minWidth: 240,
-                              maxWidth: 300,
                               backgroundColor: "background.paper",
                               boxShadow: isSelected
                                 ? "0 16px 30px rgba(37, 99, 235, 0.18)"
-                                : "0 12px 30px rgba(15, 23, 42, 0.08)",
+                                : "0 10px 22px rgba(15, 23, 42, 0.08)",
                               cursor: draggedStepId === step.id ? "grabbing" : "grab",
                               transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                             }}
@@ -522,21 +525,11 @@ export default function SmartTriggersFlowPage() {
                         </Box>
                       );
                     })}
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={handleOpenStepMenu}
-                      sx={{
-                        borderRadius: 3,
-                        alignSelf: "center",
-                        whiteSpace: "nowrap",
-                        backgroundColor: "background.paper",
-                      }}
-                    >
-                      Add module
-                    </Button>
                   </Box>
-                </Box>
+                  <Button variant="outlined" onClick={handleCreateModuleSet} sx={{ justifySelf: "flex-start" }}>
+                    Add full template
+                  </Button>
+                </Paper>
                 {isStepDetailsOpen ? (
                   <Paper
                     elevation={0}
