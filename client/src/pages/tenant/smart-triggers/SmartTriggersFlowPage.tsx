@@ -298,9 +298,7 @@ export default function SmartTriggersFlowPage() {
               borderRadius: 3,
               border: "1px solid",
               borderColor: "divider",
-              p: { xs: 2.5, md: 3 },
-              display: "grid",
-              gap: 2,
+              overflow: "hidden",
             }}
           >
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
@@ -338,16 +336,37 @@ export default function SmartTriggersFlowPage() {
                 sx={{
                   position: "absolute",
                   inset: 0,
-                  backgroundImage: "radial-gradient(rgba(93, 74, 184, 0.2) 1px, transparent 1px)",
-                  backgroundSize: "20px 20px",
-                  opacity: 0.7,
+                  backgroundImage: "radial-gradient(rgba(90, 99, 120, 0.18) 1px, transparent 1px)",
+                  backgroundSize: "22px 22px",
                 }}
               />
-              <Box sx={{ position: "absolute", top: 16, right: 16, zIndex: 1 }}>
-                <Button size="small" variant="outlined">
-                  Preview mode
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                alignItems={{ xs: "flex-start", md: "center" }}
+                justifyContent="space-between"
+                sx={{
+                  position: "relative",
+                  zIndex: 1,
+                  px: { xs: 2.5, md: 3 },
+                  py: 2,
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  backdropFilter: "blur(6px)",
+                }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Chip label={getRunStateLabel(activeFlow.status)} color={getRunStateTone(activeFlow.status)} />
+                  <Chip label={`${getProcessedLeads(activeFlow.id)} leads processed`} variant="outlined" />
+                </Stack>
+                <Button
+                  size="small"
+                  variant={isPreviewMode ? "contained" : "outlined"}
+                  onClick={() => setIsPreviewMode((prev) => !prev)}
+                >
+                  {isPreviewMode ? "Exit preview" : "Preview mode"}
                 </Button>
-              </Box>
+              </Stack>
               <Box
                 sx={{
                   position: "relative",
@@ -379,6 +398,7 @@ export default function SmartTriggersFlowPage() {
                         p: 2,
                         minWidth: 220,
                         backgroundColor: "background.paper",
+                        boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
                       }}
                     >
                       <Stack spacing={1}>
@@ -438,9 +458,11 @@ export default function SmartTriggersFlowPage() {
                               minWidth: 240,
                               maxWidth: 300,
                               backgroundColor: "background.paper",
-                              boxShadow: "0 12px 30px rgba(28, 34, 66, 0.08)",
+                              boxShadow: isSelected
+                                ? "0 16px 30px rgba(37, 99, 235, 0.18)"
+                                : "0 12px 30px rgba(15, 23, 42, 0.08)",
                               cursor: draggedStepId === step.id ? "grabbing" : "grab",
-                              transition: "border-color 0.2s ease",
+                              transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                             }}
                           >
                             <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -475,10 +497,15 @@ export default function SmartTriggersFlowPage() {
                       );
                     })}
                     <Button
-                      variant="contained"
+                      variant="outlined"
                       startIcon={<AddIcon />}
                       onClick={handleOpenStepMenu}
-                      sx={{ borderRadius: 3, alignSelf: "center", whiteSpace: "nowrap" }}
+                      sx={{
+                        borderRadius: 3,
+                        alignSelf: "center",
+                        whiteSpace: "nowrap",
+                        backgroundColor: "background.paper",
+                      }}
                     >
                       Add module
                     </Button>
@@ -497,6 +524,7 @@ export default function SmartTriggersFlowPage() {
                       display: "grid",
                       gap: 2,
                       alignContent: "start",
+                      boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
                     }}
                   >
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
