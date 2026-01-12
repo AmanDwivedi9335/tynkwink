@@ -53,6 +53,7 @@ export default function SmartTriggersFlowPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isStepDetailsOpen, setIsStepDetailsOpen] = useState(true);
   const [isFlowSettingsOpen, setIsFlowSettingsOpen] = useState(false);
 
