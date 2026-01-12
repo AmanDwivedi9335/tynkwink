@@ -231,7 +231,7 @@ export default function SmartTriggersFlowPage() {
 
   return (
     <Box sx={{ display: "grid", gap: 3 }}>
-      <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
+      <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2} alignItems="flex-start">
         <Box>
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/app/smart-triggers")}>
             Back to flows
@@ -243,7 +243,13 @@ export default function SmartTriggersFlowPage() {
             Edit modules, pause or resume automation, and monitor lead processing in real time.
           </Typography>
         </Box>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "center" }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          alignItems={{ xs: "stretch", sm: "center" }}
+          justifyContent={{ xs: "flex-start", md: "flex-end" }}
+          flexWrap="wrap"
+        >
           <FormControl size="small" sx={{ minWidth: 200 }} disabled={loading || flows.length === 0}>
             <InputLabel id="flow-select-label">Flow</InputLabel>
             <Select
@@ -264,6 +270,7 @@ export default function SmartTriggersFlowPage() {
             startIcon={isPublished ? <PauseCircleOutlineIcon /> : <PlayCircleOutlineIcon />}
             onClick={() => handleSave(isPublished ? "DRAFT" : "PUBLISHED")}
             disabled={!activeFlow || isSaving}
+            sx={{ whiteSpace: "nowrap" }}
           >
             {isPublished ? "Pause flow" : "Resume flow"}
           </Button>
@@ -272,10 +279,16 @@ export default function SmartTriggersFlowPage() {
             startIcon={<SaveIcon />}
             disabled={!activeFlow || isSaving}
             onClick={() => handleSave()}
+            sx={{ whiteSpace: "nowrap" }}
           >
             {isSaving ? "Saving..." : "Save updates"}
           </Button>
-          <Button variant="outlined" onClick={() => setIsFlowSettingsOpen(true)} disabled={!activeFlow}>
+          <Button
+            variant="outlined"
+            onClick={() => setIsFlowSettingsOpen(true)}
+            disabled={!activeFlow}
+            sx={{ whiteSpace: "nowrap" }}
+          >
             Flow settings
           </Button>
         </Stack>
@@ -302,7 +315,19 @@ export default function SmartTriggersFlowPage() {
               overflow: "hidden",
             }}
           >
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", md: "center" }}
+              gap={2}
+              sx={{
+                px: { xs: 2.5, md: 3 },
+                py: 2,
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                backgroundColor: "background.paper",
+              }}
+            >
               <Box>
                 <Typography variant="h6" fontWeight={700}>
                   Automation modules
@@ -311,11 +336,11 @@ export default function SmartTriggersFlowPage() {
                   Update triggers and actions. Remove any module to reshape the lead journey.
                 </Typography>
               </Box>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                <Button variant="outlined" onClick={handleCreateModuleSet}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+                <Button variant="outlined" onClick={handleCreateModuleSet} sx={{ whiteSpace: "nowrap" }}>
                   Add full template
                 </Button>
-                <Button variant="outlined" onClick={handleOpenStepMenu}>
+                <Button variant="outlined" onClick={handleOpenStepMenu} sx={{ whiteSpace: "nowrap" }}>
                   Add module
                 </Button>
               </Stack>
