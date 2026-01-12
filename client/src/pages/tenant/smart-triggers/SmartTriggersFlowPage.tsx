@@ -549,6 +549,8 @@ export default function SmartTriggersFlowPage() {
                       gap: 2,
                       alignContent: "start",
                       boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
+                      position: { lg: "sticky" },
+                      top: { lg: 24 },
                     }}
                   >
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -631,6 +633,8 @@ export default function SmartTriggersFlowPage() {
                       borderColor: "divider",
                       p: 1.5,
                       backgroundColor: "background.paper",
+                      position: { lg: "sticky" },
+                      top: { lg: 24 },
                     }}
                   >
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
