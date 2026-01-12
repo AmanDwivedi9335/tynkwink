@@ -24,6 +24,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutline";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import SaveIcon from "@mui/icons-material/Save";
@@ -531,91 +532,117 @@ export default function SmartTriggersFlowPage() {
                     </Button>
                   </Box>
                 </Box>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    borderRadius: 2,
-                    border: "1px solid",
-                    borderColor: "divider",
-                    p: 2,
-                    minHeight: { xs: 220, lg: 360 },
-                    backgroundColor: "background.paper",
-                    display: "grid",
-                    gap: 2,
-                    alignContent: "start",
-                  }}
-                >
-                  <Stack direction="row" alignItems="center" justifyContent="space-between">
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      Step details
-                    </Typography>
-                    <IconButton
-                      aria-label="Close step details"
-                      size="small"
-                      onClick={() => {
-                        setSelectedStepId(null);
-                        setIsStepDetailsOpen(false);
-                      }}
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </Stack>
-                  {selectedStep ? (
-                    <>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Avatar sx={{ bgcolor: "primary.light", color: "primary.main" }}>
-                          {stepIconMap[selectedStep.type]}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="overline" color="text.secondary">
-                            {selectedStep.label}
-                          </Typography>
-                          <Typography variant="subtitle2" fontWeight={600}>
-                            Step {activeFlow?.steps.findIndex((step) => step.id === selectedStep.id) + 1}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                      <TextField
-                        label="Title"
-                        value={selectedStep.title}
-                        onChange={(event) => handleStepChange(selectedStep.id, "title", event.target.value)}
+                {isStepDetailsOpen ? (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      borderRadius: 2,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      p: 2,
+                      minHeight: { xs: 220, lg: 360 },
+                      backgroundColor: "background.paper",
+                      display: "grid",
+                      gap: 2,
+                      alignContent: "start",
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        Step details
+                      </Typography>
+                      <IconButton
+                        aria-label="Close step details"
                         size="small"
-                      />
-                      <TextField
-                        label="Details"
-                        value={selectedStep.detail}
-                        onChange={(event) => handleStepChange(selectedStep.id, "detail", event.target.value)}
-                        multiline
-                        minRows={3}
-                        size="small"
-                      />
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                        {selectedStep.tags.map((tag) => (
-                          <Chip
-                            key={`${selectedStep.id}-${tag}`}
-                            label={tag}
-                            size="small"
-                            color={tag.toLowerCase().includes("whatsapp") ? "success" : "default"}
-                            variant={tag.toLowerCase().includes("whatsapp") ? "filled" : "outlined"}
-                          />
-                        ))}
-                      </Stack>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={<DeleteOutlineIcon />}
-                        onClick={() => handleRemoveStep(selectedStep.id)}
-                        sx={{ justifySelf: "flex-start" }}
+                        onClick={() => {
+                          setSelectedStepId(null);
+                          setIsStepDetailsOpen(false);
+                        }}
                       >
-                        Remove step
-                      </Button>
-                    </>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Select a step to view and edit its details.
-                    </Typography>
-                  )}
-                </Paper>
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                    {selectedStep ? (
+                      <>
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <Avatar sx={{ bgcolor: "primary.light", color: "primary.main" }}>
+                            {stepIconMap[selectedStep.type]}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="overline" color="text.secondary">
+                              {selectedStep.label}
+                            </Typography>
+                            <Typography variant="subtitle2" fontWeight={600}>
+                              Step {activeFlow?.steps.findIndex((step) => step.id === selectedStep.id) + 1}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                        <TextField
+                          label="Title"
+                          value={selectedStep.title}
+                          onChange={(event) => handleStepChange(selectedStep.id, "title", event.target.value)}
+                          size="small"
+                        />
+                        <TextField
+                          label="Details"
+                          value={selectedStep.detail}
+                          onChange={(event) => handleStepChange(selectedStep.id, "detail", event.target.value)}
+                          multiline
+                          minRows={3}
+                          size="small"
+                        />
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                          {selectedStep.tags.map((tag) => (
+                            <Chip
+                              key={`${selectedStep.id}-${tag}`}
+                              label={tag}
+                              size="small"
+                              color={tag.toLowerCase().includes("whatsapp") ? "success" : "default"}
+                              variant={tag.toLowerCase().includes("whatsapp") ? "filled" : "outlined"}
+                            />
+                          ))}
+                        </Stack>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          startIcon={<DeleteOutlineIcon />}
+                          onClick={() => handleRemoveStep(selectedStep.id)}
+                          sx={{ justifySelf: "flex-start" }}
+                        >
+                          Remove step
+                        </Button>
+                      </>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Select a step to view and edit its details.
+                      </Typography>
+                    )}
+                  </Paper>
+                ) : (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      borderRadius: 2,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      p: 1.5,
+                      backgroundColor: "background.paper",
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        Step details minimized
+                      </Typography>
+                      <IconButton
+                        aria-label="Expand step details"
+                        size="small"
+                        onClick={() => setIsStepDetailsOpen(true)}
+                      >
+                        <ExpandMoreIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Paper>
+                )}
               </Box>
             </Box>
           </Paper>
