@@ -54,6 +54,7 @@ export default function SmartTriggersFlowPage() {
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
   const [isStepDetailsOpen, setIsStepDetailsOpen] = useState(true);
+  const [isFlowSettingsOpen, setIsFlowSettingsOpen] = useState(false);
 
   const loadFlow = async (targetId: string) => {
     const response = await api.get<{ flow: SmartTriggerFlow }>(`/api/smart-triggers/${targetId}`);
@@ -273,6 +274,9 @@ export default function SmartTriggersFlowPage() {
           >
             {isSaving ? "Saving..." : "Save updates"}
           </Button>
+          <Button variant="outlined" onClick={() => setIsFlowSettingsOpen(true)} disabled={!activeFlow}>
+            Flow settings
+          </Button>
         </Stack>
       </Stack>
 
@@ -300,64 +304,6 @@ export default function SmartTriggersFlowPage() {
             }}
           >
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Flow overview
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Manage metadata, ownership, and the operational status of the automation.
-                </Typography>
-              </Box>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                <Chip label={getRunStateLabel(activeFlow.status)} color={getRunStateTone(activeFlow.status)} />
-                <Chip label={`${getProcessedLeads(activeFlow.id)} leads processed`} variant="outlined" />
-              </Stack>
-            </Stack>
-            <Divider />
-            <Stack spacing={2}>
-              <TextField
-                label="Flow name"
-                value={activeFlow.name}
-                onChange={(event) => setActiveFlow({ ...activeFlow, name: event.target.value })}
-              />
-              <TextField
-                label="Description"
-                value={activeFlow.description ?? ""}
-                onChange={(event) => setActiveFlow({ ...activeFlow, description: event.target.value })}
-                multiline
-                minRows={2}
-              />
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "center" }}>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleOpenStepMenu}>
-                  Add module
-                </Button>
-                <Button variant="outlined" onClick={handleCreateModuleSet}>
-                  Add full template
-                </Button>
-                <Button
-                  variant="text"
-                  color="error"
-                  startIcon={<DeleteOutlineIcon />}
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  Delete flow
-                </Button>
-              </Stack>
-            </Stack>
-          </Paper>
-
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: 3,
-              border: "1px solid",
-              borderColor: "divider",
-              p: { xs: 2.5, md: 3 },
-              display: "grid",
-              gap: 2,
-            }}
-          >
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
               <Box>
                 <Typography variant="h6" fontWeight={700}>
                   Automation modules
@@ -366,9 +312,14 @@ export default function SmartTriggersFlowPage() {
                   Update triggers and actions. Remove any module to reshape the lead journey.
                 </Typography>
               </Box>
-              <Button variant="outlined" onClick={handleOpenStepMenu}>
-                Add module
-              </Button>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Button variant="outlined" onClick={handleCreateModuleSet}>
+                  Add full template
+                </Button>
+                <Button variant="outlined" onClick={handleOpenStepMenu}>
+                  Add module
+                </Button>
+              </Stack>
             </Stack>
 
             <Box
@@ -379,7 +330,8 @@ export default function SmartTriggersFlowPage() {
                 borderColor: "divider",
                 backgroundColor: "rgba(255,255,255,0.9)",
                 overflow: "hidden",
-                minHeight: { xs: 420, md: 520 },
+                minHeight: { xs: 520, md: 720 },
+                height: { md: "calc(100vh - 280px)" },
               }}
             >
               <Box
@@ -660,6 +612,48 @@ export default function SmartTriggersFlowPage() {
           </MenuItem>
         ))}
       </Menu>
+
+      <Dialog open={isFlowSettingsOpen} onClose={() => setIsFlowSettingsOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Flow settings</DialogTitle>
+        <DialogContent sx={{ display: "grid", gap: 2, mt: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Chip
+              label={getRunStateLabel(activeFlow?.status ?? "DRAFT")}
+              color={getRunStateTone(activeFlow?.status ?? "DRAFT")}
+            />
+            {activeFlow ? (
+              <Chip label={`${getProcessedLeads(activeFlow.id)} leads processed`} variant="outlined" />
+            ) : null}
+          </Stack>
+          <TextField
+            label="Flow name"
+            value={activeFlow?.name ?? ""}
+            onChange={(event) => activeFlow && setActiveFlow({ ...activeFlow, name: event.target.value })}
+          />
+          <TextField
+            label="Description"
+            value={activeFlow?.description ?? ""}
+            onChange={(event) => activeFlow && setActiveFlow({ ...activeFlow, description: event.target.value })}
+            multiline
+            minRows={3}
+          />
+          <Button
+            variant="text"
+            color="error"
+            startIcon={<DeleteOutlineIcon />}
+            onClick={() => {
+              setIsFlowSettingsOpen(false);
+              setDeleteOpen(true);
+            }}
+            sx={{ justifySelf: "flex-start" }}
+          >
+            Delete flow
+          </Button>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsFlowSettingsOpen(false)}>Done</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Delete flow</DialogTitle>
