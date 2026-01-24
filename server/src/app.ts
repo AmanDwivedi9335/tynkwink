@@ -12,6 +12,7 @@ import gmailRoutes from "./routes/gmail.routes";
 import leadInboxRoutes from "./routes/leadInbox.routes";
 import tenantSettingsRoutes from "./routes/tenantSettings.routes";
 import extensionRoutes from "./routes/extension.routes";
+import whatsappRoutes from "./routes/whatsapp.routes";
 import { attachCorrelationId } from "./middleware/correlation";
 
 export const app = express();
@@ -39,3 +40,4 @@ app.use("/api", gmailRoutes);
 app.use("/api", leadInboxRoutes);
 app.use("/api", tenantSettingsRoutes);
 app.use("/api", extensionRoutes);
+app.use("/api", whatsappRoutes);

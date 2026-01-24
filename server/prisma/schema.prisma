@@ -26,6 +26,8 @@ model Tenant {
   smartTriggerFlows SmartTriggerFlow[]
   settings          TenantSettings?
   users             TenantUser[]
+  whatsappIntegration WhatsAppIntegration?
+  whatsappMessages  WhatsAppMessage[]
 
   @@index([isActive])
 }
@@ -57,6 +59,8 @@ model User {
   auditLogs        AuditLog[]
   refreshTokens    RefreshToken[]
   memberships      TenantUser[]
+  createdWhatsappIntegrations WhatsAppIntegration[] @relation("WhatsAppIntegrationCreator")
+  sentWhatsappMessages        WhatsAppMessage[] @relation("WhatsAppMessageSender")
 
   @@index([isActive])
 }
@@ -121,6 +125,7 @@ model Lead {
   assignedUser User?         @relation("LeadAssignee", fields: [assignedTo], references: [id])
   stage        LeadStage     @relation(fields: [stageId], references: [id])
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  whatsappMessages WhatsAppMessage[]
 
   @@index([tenantId, stageId])
   @@index([tenantId, phone])
@@ -304,6 +309,55 @@ model AuditLog {
   @@index([tenantId, createdAt])
 }
 
+model WhatsAppIntegration {
+  id                   String                    @id @default(cuid())
+  tenantId             String                    @unique
+  businessAccountId    String?
+  phoneNumberId        String
+  displayPhoneNumber   String?
+  encryptedAccessToken String                    @db.Text
+  appId                String?
+  webhookVerifyToken   String?
+  status               WhatsAppIntegrationStatus @default(ACTIVE)
+  lastValidatedAt      DateTime?
+  lastValidationError  String?                   @db.Text
+  createdByUserId      String
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  tenant               Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser        User                      @relation("WhatsAppIntegrationCreator", fields: [createdByUserId], references: [id])
+  messages             WhatsAppMessage[]
+
+  @@index([status])
+}
+
+model WhatsAppMessage {
+  id                String                  @id @default(cuid())
+  tenantId          String
+  integrationId     String
+  leadId            String?
+  direction         WhatsAppMessageDirection
+  status            WhatsAppMessageStatus   @default(QUEUED)
+  recipientPhone    String
+  messageBody       String                  @db.Text
+  providerMessageId String?
+  providerStatus    String?
+  providerError     String?                 @db.Text
+  metadataJson      Json?
+  sentByUserId      String?
+  sentAt            DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  integration       WhatsAppIntegration     @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  lead              Lead?                   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  sentByUser        User?                   @relation("WhatsAppMessageSender", fields: [sentByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([integrationId, createdAt])
+  @@index([leadId])
+}
+
 enum UserRole {
   SUPERADMIN
   TENANT_ADMIN
@@ -340,6 +394,23 @@ enum GmailIntegrationStatus {
   ACTIVE
   REVOKED
   ERROR
+}
+
+enum WhatsAppIntegrationStatus {
+  ACTIVE
+  ERROR
+  DISCONNECTED
+}
+
+enum WhatsAppMessageDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum WhatsAppMessageStatus {
+  QUEUED
+  SENT
+  FAILED
 }
 
 enum LeadInboxStatus {
