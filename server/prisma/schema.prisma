@@ -24,6 +24,12 @@ model Tenant {
   leads             Lead[]
   stages            LeadStage[]
   smartTriggerFlows SmartTriggerFlow[]
+  sequences         Sequence[]
+  sequenceSteps     SequenceStep[]
+  sequenceEnrollments SequenceEnrollment[]
+  sequenceJobs      SequenceJob[]
+  sequenceLogs      SequenceExecutionLog[]
+  tasks             Task[]
   settings          TenantSettings?
   users             TenantUser[]
   whatsappIntegration WhatsAppIntegration?
@@ -54,6 +60,9 @@ model User {
   updatedAt        DateTime          @updatedAt
   inboundDecisions InboundDecision[] @relation("InboundDecider")
   assignedLeads    Lead[]            @relation("LeadAssignee")
+  createdSequences Sequence[]        @relation("SequenceCreator")
+  sequenceEnrollments SequenceEnrollment[] @relation("SequenceEnroller")
+  assignedTasks    Task[]            @relation("TaskAssignee")
   gmailIntegrations GmailIntegration[]     @relation("GmailIntegrationCreator")
   gmailAccess       GmailIntegrationAccess[]
   auditLogs        AuditLog[]
@@ -126,6 +135,9 @@ model Lead {
   stage        LeadStage     @relation(fields: [stageId], references: [id])
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   whatsappMessages WhatsAppMessage[]
+  sequenceEnrollments SequenceEnrollment[]
+  sequenceJobs   SequenceJob[]
+  tasks          Task[]
 
   @@index([tenantId, stageId])
   @@index([tenantId, phone])
@@ -358,6 +370,151 @@ model WhatsAppMessage {
   @@index([leadId])
 }
 
+model Sequence {
+  id           String              @id @default(cuid())
+  tenantId     String
+  name         String
+  description  String?
+  isActive     Boolean             @default(true)
+  triggerType  SequenceTriggerType
+  triggerConfig Json
+  createdById  String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy    User                @relation("SequenceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  steps        SequenceStep[]
+  enrollments  SequenceEnrollment[]
+  jobs         SequenceJob[]
+  logs         SequenceExecutionLog[]
+
+  @@index([tenantId, isActive])
+  @@index([tenantId, triggerType])
+}
+
+model SequenceStep {
+  id           String             @id @default(cuid())
+  tenantId     String
+  sequenceId   String
+  stepOrder    Int
+  delayValue   Int
+  delayUnit    SequenceDelayUnit
+  actionType   SequenceActionType
+  actionConfig Json
+  isEnabled    Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sequence     Sequence           @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  jobs         SequenceJob[]
+  logs         SequenceExecutionLog[]
+
+  @@unique([tenantId, sequenceId, stepOrder])
+  @@index([tenantId])
+  @@index([sequenceId, isEnabled])
+}
+
+model SequenceEnrollment {
+  id               String                   @id @default(cuid())
+  tenantId         String
+  sequenceId       String
+  leadId           String
+  enrolledById     String?
+  status           SequenceEnrollmentStatus @default(ACTIVE)
+  startedAt        DateTime                 @default(now())
+  completedAt      DateTime?
+  pausedAt         DateTime?
+  cancelledAt      DateTime?
+  currentStepOrder Int                      @default(0)
+  dedupeKey        String?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  tenant           Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sequence         Sequence                 @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  lead             Lead                     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  enrolledBy       User?                    @relation("SequenceEnroller", fields: [enrolledById], references: [id], onDelete: SetNull)
+  jobs             SequenceJob[]
+  logs             SequenceExecutionLog[]
+
+  @@index([tenantId, sequenceId, status])
+  @@index([tenantId, leadId])
+  @@index([tenantId, dedupeKey])
+}
+
+model SequenceJob {
+  id              String            @id @default(cuid())
+  tenantId        String
+  enrollmentId    String
+  sequenceId      String
+  leadId          String
+  stepId          String
+  stepOrder       Int
+  actionType      SequenceActionType
+  actionConfig    Json
+  scheduledFor    DateTime
+  status          SequenceJobStatus @default(SCHEDULED)
+  attemptCount    Int               @default(0)
+  maxAttempts     Int               @default(3)
+  lastError       String?           @db.Text
+  lockedAt        DateTime?
+  lockToken       String?
+  providerMessageId String?
+  idempotencyKey  String            @unique
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enrollment      SequenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  sequence        Sequence          @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  lead            Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  step            SequenceStep      @relation(fields: [stepId], references: [id], onDelete: Restrict)
+  logs            SequenceExecutionLog[]
+
+  @@index([tenantId, status, scheduledFor])
+  @@index([tenantId, enrollmentId])
+  @@index([tenantId, sequenceId])
+}
+
+model SequenceExecutionLog {
+  id             String                 @id @default(cuid())
+  tenantId       String
+  jobId          String
+  enrollmentId   String
+  stepId         String
+  actionType     SequenceActionType
+  status         SequenceExecutionStatus
+  requestPayload Json
+  responsePayload Json
+  errorMessage   String?
+  createdAt      DateTime               @default(now())
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  job            SequenceJob            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  enrollment     SequenceEnrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  step           SequenceStep           @relation(fields: [stepId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, jobId])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  tenantId    String
+  leadId      String
+  assigneeId  String
+  type        TaskType
+  title       String
+  description String?    @db.Text
+  dueAt       DateTime
+  status      TaskStatus @default(OPEN)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead        Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignee    User       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, status, dueAt])
+  @@index([tenantId, assigneeId])
+}
+
 enum UserRole {
   SUPERADMIN
   TENANT_ADMIN
@@ -411,6 +568,55 @@ enum WhatsAppMessageStatus {
   QUEUED
   SENT
   FAILED
+}
+
+enum SequenceTriggerType {
+  MANUAL
+  ON_LEAD_CREATED
+  ON_STAGE_CHANGED
+}
+
+enum SequenceDelayUnit {
+  MINUTES
+  HOURS
+  DAYS
+}
+
+enum SequenceActionType {
+  EMAIL
+  WHATSAPP
+  CALL_REMINDER
+}
+
+enum SequenceEnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum SequenceJobStatus {
+  SCHEDULED
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+  SKIPPED
+}
+
+enum SequenceExecutionStatus {
+  SUCCESS
+  FAILED
+}
+
+enum TaskType {
+  CALL
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+  CANCELLED
 }
 
 enum LeadInboxStatus {
