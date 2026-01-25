@@ -11,7 +11,7 @@ const stepSchema = z.object({
   label: z.string().min(1),
   title: z.string().min(1),
   detail: z.string().min(1),
-  type: z.enum(["TRIGGER", "ACTION", "DELAY", "DECISION"]),
+  type: z.enum(["TRIGGER", "ACTION", "ACTION_EMAIL", "DELAY", "DECISION"]),
   tags: z.array(z.string()).optional().default([]),
 });
 
