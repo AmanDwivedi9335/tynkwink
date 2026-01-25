@@ -4,6 +4,8 @@ import { requireAuth } from "../middleware/auth";
 import { prisma } from "../prisma";
 import { InboundSource } from "@prisma/client";
 import { ensureStages, stageColorMap, fallbackStageColor } from "../services/leadStages";
+import { enrollLeadForTrigger } from "../services/sequenceEnrollmentService";
+import { SequenceTriggerType } from "@prisma/client";
 
 const router = Router();
 
@@ -187,7 +189,58 @@ router.post("/crm/leads", requireAuth, async (req, res) => {
     },
   });
 
+  await enrollLeadForTrigger({
+    tenantId,
+    leadId: lead.id,
+    triggerType: SequenceTriggerType.ON_LEAD_CREATED,
+    triggerConfig: { enabled: true },
+  });
+
   return res.status(201).json({ lead: formatLead(lead) });
+});
+
+const leadStageUpdateSchema = z.object({
+  stageId: z.string().trim().min(1, "Stage is required"),
+});
+
+router.patch("/crm/leads/:leadId/stage", requireAuth, async (req, res) => {
+  const tenantId = req.auth?.tenantId;
+  if (!tenantId) {
+    return res.status(403).json({ message: "Tenant context required" });
+  }
+
+  const parsed = leadStageUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid input", errors: z.treeifyError(parsed.error) });
+  }
+
+  const lead = await prisma.lead.findFirst({ where: { id: req.params.leadId, tenantId } });
+  if (!lead) {
+    return res.status(404).json({ message: "Lead not found" });
+  }
+
+  const stage = await prisma.leadStage.findFirst({
+    where: { id: parsed.data.stageId, tenantId, isDeleted: false },
+  });
+  if (!stage) {
+    return res.status(400).json({ message: "Invalid stage selected" });
+  }
+
+  const updated = await prisma.lead.update({
+    where: { id: lead.id },
+    data: { stageId: stage.id },
+  });
+
+  if (lead.stageId !== stage.id) {
+    await enrollLeadForTrigger({
+      tenantId,
+      leadId: lead.id,
+      triggerType: SequenceTriggerType.ON_STAGE_CHANGED,
+      triggerConfig: { stageId: stage.id },
+    });
+  }
+
+  return res.json({ lead: formatLead(updated) });
 });
 
 router.patch("/crm/leads/:leadId/assignment", requireAuth, async (req, res) => {
