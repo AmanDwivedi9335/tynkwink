@@ -478,6 +478,7 @@ model SequenceExecutionLog {
   id             String                 @id @default(cuid())
   tenantId       String
   jobId          String
+  sequenceId     String
   enrollmentId   String
   stepId         String
   actionType     SequenceActionType
@@ -488,11 +489,13 @@ model SequenceExecutionLog {
   createdAt      DateTime               @default(now())
   tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   job            SequenceJob            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sequence       Sequence               @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
   enrollment     SequenceEnrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   step           SequenceStep           @relation(fields: [stepId], references: [id], onDelete: Restrict)
 
   @@index([tenantId, createdAt])
   @@index([tenantId, jobId])
+  @@index([tenantId, sequenceId])
 }
 
 model Task {
