@@ -75,6 +75,7 @@ async function markJobResult(params: {
 async function logExecution(params: {
   tenantId: string;
   jobId: string;
+  sequenceId: string;
   enrollmentId: string;
   stepId: string;
   actionType: SequenceActionType;
@@ -85,10 +86,11 @@ async function logExecution(params: {
 }) {
   await prisma.sequenceExecutionLog.create({
     data: {
-      tenantId: params.tenantId,
-      jobId: params.jobId,
-      enrollmentId: params.enrollmentId,
-      stepId: params.stepId,
+      tenant: { connect: { id: params.tenantId } },
+      job: { connect: { id: params.jobId } },
+      sequence: { connect: { id: params.sequenceId } },
+      enrollment: { connect: { id: params.enrollmentId } },
+      step: { connect: { id: params.stepId } },
       actionType: params.actionType,
       status: params.status,
       requestPayload: params.requestPayload,
@@ -165,6 +167,7 @@ async function handleJob(job: Awaited<ReturnType<typeof lockDueJobs>>[number]) {
       await logExecution({
         tenantId: job.tenantId,
         jobId: job.id,
+        sequenceId: job.sequenceId,
         enrollmentId: job.enrollmentId,
         stepId: job.stepId,
         actionType: job.actionType,
@@ -199,6 +202,7 @@ async function handleJob(job: Awaited<ReturnType<typeof lockDueJobs>>[number]) {
       await logExecution({
         tenantId: job.tenantId,
         jobId: job.id,
+        sequenceId: job.sequenceId,
         enrollmentId: job.enrollmentId,
         stepId: job.stepId,
         actionType: job.actionType,
@@ -247,6 +251,7 @@ async function handleJob(job: Awaited<ReturnType<typeof lockDueJobs>>[number]) {
       await logExecution({
         tenantId: job.tenantId,
         jobId: job.id,
+        sequenceId: job.sequenceId,
         enrollmentId: job.enrollmentId,
         stepId: job.stepId,
         actionType: job.actionType,
@@ -298,6 +303,7 @@ async function handleJob(job: Awaited<ReturnType<typeof lockDueJobs>>[number]) {
     await logExecution({
       tenantId: job.tenantId,
       jobId: job.id,
+      sequenceId: job.sequenceId,
       enrollmentId: job.enrollmentId,
       stepId: job.stepId,
       actionType: job.actionType,
