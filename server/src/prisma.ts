@@ -16,6 +16,9 @@ const createClient = (ClientCtor: typeof PrismaClient) =>
 const hasGmailModels = (client: PrismaClient) =>
   "gmailIntegration" in client && "gmailRule" in client;
 
+const hasSmtpModels = (client: PrismaClient) =>
+  "smtpCredential" in client && "smtpMessageLog" in client;
+
 const loadFreshClient = () => {
   delete require.cache[require.resolve("@prisma/client")];
   const { PrismaClient: FreshClient } = require("@prisma/client") as { PrismaClient: typeof PrismaClient };
@@ -24,8 +27,8 @@ const loadFreshClient = () => {
 
 let prismaInstance = global.__prisma ?? createClient(PrismaClient);
 
-const ensureGmailModels = () => {
-  if (!hasGmailModels(prismaInstance)) {
+const ensureRequiredModels = () => {
+  if (!hasGmailModels(prismaInstance) || !hasSmtpModels(prismaInstance)) {
     prismaInstance = loadFreshClient();
   }
 
@@ -36,9 +39,9 @@ const ensureGmailModels = () => {
   return prismaInstance;
 };
 
-prismaInstance = ensureGmailModels();
+prismaInstance = ensureRequiredModels();
 
 export const prisma = prismaInstance;
-export const getPrismaClient = () => ensureGmailModels();
+export const getPrismaClient = () => ensureRequiredModels();
 
 if (process.env.NODE_ENV !== "production") global.__prisma = prisma;
