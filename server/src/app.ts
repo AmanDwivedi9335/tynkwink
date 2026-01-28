@@ -14,6 +14,7 @@ import tenantSettingsRoutes from "./routes/tenantSettings.routes";
 import extensionRoutes from "./routes/extension.routes";
 import whatsappRoutes from "./routes/whatsapp.routes";
 import sequenceRoutes from "./routes/sequences.routes";
+import smtpRoutes from "./routes/smtp.routes";
 import { attachCorrelationId } from "./middleware/correlation";
 
 export const app = express();
@@ -43,3 +44,4 @@ app.use("/api", tenantSettingsRoutes);
 app.use("/api", extensionRoutes);
 app.use("/api", whatsappRoutes);
 app.use("/api", sequenceRoutes);
+app.use("/api", smtpRoutes);

@@ -34,6 +34,8 @@ model Tenant {
   users             TenantUser[]
   whatsappIntegration WhatsAppIntegration?
   whatsappMessages  WhatsAppMessage[]
+  smtpCredentials   SmtpCredential[]
+  smtpMessages      SmtpMessageLog[]
 
   @@index([isActive])
 }
@@ -70,6 +72,8 @@ model User {
   memberships      TenantUser[]
   createdWhatsappIntegrations WhatsAppIntegration[] @relation("WhatsAppIntegrationCreator")
   sentWhatsappMessages        WhatsAppMessage[] @relation("WhatsAppMessageSender")
+  smtpCredentials            SmtpCredential[]
+  smtpMessages               SmtpMessageLog[]
 
   @@index([isActive])
 }
@@ -498,6 +502,48 @@ model SequenceExecutionLog {
   @@index([tenantId, sequenceId])
 }
 
+model SmtpCredential {
+  id                String   @id @default(cuid())
+  tenantId          String
+  userId            String
+  host              String
+  port              Int
+  secure            Boolean  @default(false)
+  username          String
+  encryptedPassword String   @db.Text
+  fromEmail         String
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages          SmtpMessageLog[]
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model SmtpMessageLog {
+  id               String             @id @default(cuid())
+  tenantId         String
+  userId           String
+  smtpCredentialId String
+  toEmail          String
+  subject          String
+  body             String             @db.Text
+  status           SmtpMessageStatus
+  errorMessage     String?            @db.Text
+  createdAt        DateTime           @default(now())
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  smtpCredential   SmtpCredential     @relation(fields: [smtpCredentialId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, userId])
+  @@index([smtpCredentialId, createdAt])
+}
+
 model Task {
   id          String     @id @default(cuid())
   tenantId    String
@@ -608,6 +654,11 @@ enum SequenceJobStatus {
 }
 
 enum SequenceExecutionStatus {
+  SUCCESS
+  FAILED
+}
+
+enum SmtpMessageStatus {
   SUCCESS
   FAILED
 }
