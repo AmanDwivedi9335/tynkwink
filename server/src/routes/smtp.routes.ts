@@ -197,12 +197,39 @@ router.post("/tenants/:tenantId/smtp-credentials/me/test", requireAuth, requireT
       }
     );
 
-    if (existing) {
+    let credentialForLog = existing;
+    if (parsed.data.password) {
+      credentialForLog = await prisma.smtpCredential.upsert({
+        where: { tenantId_userId: { tenantId, userId } },
+        create: {
+          tenantId,
+          userId,
+          host: parsed.data.host,
+          port: parsed.data.port,
+          secure: parsed.data.secure ?? false,
+          username: parsed.data.username,
+          encryptedPassword: encryptSecret(parsed.data.password),
+          fromEmail: parsed.data.fromEmail ?? parsed.data.username,
+          isActive: true,
+        },
+        update: {
+          host: parsed.data.host,
+          port: parsed.data.port,
+          secure: parsed.data.secure ?? false,
+          username: parsed.data.username,
+          encryptedPassword: encryptSecret(parsed.data.password),
+          fromEmail: parsed.data.fromEmail ?? parsed.data.username,
+          isActive: true,
+        },
+      });
+    }
+
+    if (credentialForLog) {
       await prisma.smtpMessageLog.create({
         data: {
           tenantId,
           userId,
-          smtpCredentialId: existing.id,
+          smtpCredentialId: credentialForLog.id,
           toEmail: parsed.data.toEmail ?? parsed.data.username,
           subject: "SMTP settings test",
           body: "Your SMTP settings are working.",
