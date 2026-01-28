@@ -80,6 +80,7 @@ export default function SmtpSettingsPage() {
   const [secure, setSecure] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const [fromEmail, setFromEmail] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -146,6 +147,8 @@ export default function SmtpSettingsPage() {
     setSecure(Boolean(myCredential.secure));
     setUsername(myCredential.username ?? "");
     setFromEmail(myCredential.fromEmail ?? "");
+    setPassword("");
+    setPasswordTouched(false);
   }, [myCredential]);
 
   const handleSave = async () => {
@@ -161,9 +164,10 @@ export default function SmtpSettingsPage() {
         username: username.trim(),
       };
       if (fromEmail.trim()) payload.fromEmail = fromEmail.trim();
-      if (password.trim()) payload.password = password.trim();
+      if (passwordTouched && password.trim()) payload.password = password.trim();
       await api.put(`/api/tenants/${tenantId}/smtp-credentials/me`, payload);
       setPassword("");
+      setPasswordTouched(false);
       setStatus("SMTP settings saved.");
       await loadCredentials();
     } catch (err: any) {
@@ -188,6 +192,7 @@ export default function SmtpSettingsPage() {
       setSecure(false);
       setUsername("");
       setPassword("");
+      setPasswordTouched(false);
       setFromEmail("");
       setStatus("SMTP settings removed.");
       await loadCredentials();
@@ -211,7 +216,7 @@ export default function SmtpSettingsPage() {
         username: username.trim(),
       };
       if (fromEmail.trim()) payload.fromEmail = fromEmail.trim();
-      if (password.trim()) payload.password = password.trim();
+      if (passwordTouched && password.trim()) payload.password = password.trim();
       if (user?.email) payload.toEmail = user.email;
       await api.post(`/api/tenants/${tenantId}/smtp-credentials/me/test`, payload);
       setStatus(`Test email sent to ${user?.email ?? "your inbox"}.`);
@@ -300,8 +305,10 @@ export default function SmtpSettingsPage() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            onFocus={() => setPasswordTouched(true)}
             fullWidth
             helperText={myCredential?.passwordSet ? "Leave blank to keep your existing password." : "Required for first-time setup."}
+            autoComplete="new-password"
           />
           <TextField
             label="Test email recipient"
