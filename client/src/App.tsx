@@ -19,6 +19,7 @@ import LeadInboxPage from "./pages/tenant/LeadInboxPage";
 import TenantAccessGuidePage from "./pages/tenant/TenantAccessGuidePage";
 import StaffPage from "./pages/tenant/StaffPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
+import SmtpSettingsPage from "./pages/tenant/SmtpSettingsPage";
 
 // Temporary home/dashboard page
 function HomePage() {
@@ -51,6 +52,7 @@ function App() {
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="lead-inbox" element={<LeadInboxPage />} />
         <Route path="settings/gmail" element={<GmailSettingsPage />} />
+        <Route path="settings/smtp" element={<SmtpSettingsPage />} />
         <Route path="settings/approvals" element={<ApprovalSettingsPage />} />
         <Route path="staff" element={<StaffPage />} />
         <Route path="access-guide" element={<TenantAccessGuidePage />} />
