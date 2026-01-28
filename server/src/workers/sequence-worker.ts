@@ -1,10 +1,11 @@
 import "dotenv/config";
 import { randomUUID } from "crypto";
 import { prisma } from "../prisma";
-import { getEmailProvider } from "../providers/email";
+import { getEmailProvider, sendWithSmtpConfig } from "../providers/email";
 import { decryptAccessToken, normalizePhoneNumber, sendWhatsAppTextMessage } from "../services/whatsappService";
 import { buildTemplateContext, renderTemplate } from "../services/sequenceTemplates";
 import { SequenceActionType, SequenceExecutionStatus, SequenceJobStatus } from "@prisma/client";
+import { decryptSecret } from "../security/encryption";
 
 const BATCH_SIZE = Number(process.env.SEQUENCE_WORKER_BATCH ?? 50);
 const POLL_INTERVAL_MS = Number(process.env.SEQUENCE_WORKER_INTERVAL_MS ?? 60_000);
@@ -155,14 +156,71 @@ async function handleJob(job: Awaited<ReturnType<typeof lockDueJobs>>[number]) {
       }
       const subject = renderTemplate((job.actionConfig as any).subject ?? "", templateContext);
       const body = renderTemplate((job.actionConfig as any).body ?? "", templateContext);
+      const smtpCredentialId = (job.actionConfig as any).smtpCredentialId ?? null;
+      const fallbackUserId = job.enrollment.enrolledById ?? null;
+      const smtpCredential = smtpCredentialId
+        ? await prisma.smtpCredential.findFirst({
+            where: { id: smtpCredentialId, tenantId: job.tenantId, isActive: true },
+          })
+        : fallbackUserId
+          ? await prisma.smtpCredential.findFirst({
+              where: { tenantId: job.tenantId, userId: fallbackUserId, isActive: true },
+            })
+          : null;
 
-      const provider = getEmailProvider();
-      await provider.send({
-        to: [job.lead.email],
-        subject,
-        html: body,
-        text: body,
-      });
+      if (smtpCredential) {
+        try {
+          await sendWithSmtpConfig(
+            {
+              host: smtpCredential.host,
+              port: smtpCredential.port,
+              secure: smtpCredential.secure,
+              user: smtpCredential.username,
+              pass: decryptSecret(smtpCredential.encryptedPassword),
+              fromEmail: smtpCredential.fromEmail,
+            },
+            {
+              to: [job.lead.email],
+              subject,
+              html: body,
+              text: body,
+            }
+          );
+          await prisma.smtpMessageLog.create({
+            data: {
+              tenantId: job.tenantId,
+              userId: smtpCredential.userId,
+              smtpCredentialId: smtpCredential.id,
+              toEmail: job.lead.email,
+              subject,
+              body,
+              status: "SUCCESS",
+            },
+          });
+        } catch (error: any) {
+          await prisma.smtpMessageLog.create({
+            data: {
+              tenantId: job.tenantId,
+              userId: smtpCredential.userId,
+              smtpCredentialId: smtpCredential.id,
+              toEmail: job.lead.email,
+              subject,
+              body,
+              status: "FAILED",
+              errorMessage: error?.message ?? "SMTP send failed",
+            },
+          });
+          throw error;
+        }
+      } else {
+        const provider = getEmailProvider();
+        await provider.send({
+          to: [job.lead.email],
+          subject,
+          html: body,
+          text: body,
+        });
+      }
 
       await logExecution({
         tenantId: job.tenantId,
@@ -172,7 +230,7 @@ async function handleJob(job: Awaited<ReturnType<typeof lockDueJobs>>[number]) {
         stepId: job.stepId,
         actionType: job.actionType,
         status: SequenceExecutionStatus.SUCCESS,
-        requestPayload: { to: job.lead.email, subject },
+        requestPayload: { to: job.lead.email, subject, smtpCredentialId: smtpCredential?.id ?? null },
         responsePayload: { ok: true },
       });
     }
