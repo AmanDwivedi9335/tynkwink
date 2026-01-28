@@ -12,14 +12,7 @@ const ADMIN_ROLES = ["TENANT_ADMIN", "SALES_ADMIN"] as const;
 const credentialSchema = z.object({
   host: z.string().trim().min(1, "SMTP host is required"),
   port: z.coerce.number().int().min(1, "SMTP port is required"),
-  secure: z.preprocess((value) => {
-    if (typeof value === "string") {
-      const normalized = value.trim().toLowerCase();
-      if (["true", "1", "yes", "y"].includes(normalized)) return true;
-      if (["false", "0", "no", "n", ""].includes(normalized)) return false;
-    }
-    return value;
-  }, z.boolean().optional().default(false)),
+  secure: z.coerce.boolean().optional().default(false),
   username: z.string().trim().min(1, "SMTP username is required"),
   password: z.string().trim().min(1, "SMTP password is required").optional(),
   fromEmail: z.string().trim().email().optional(),
