@@ -12,6 +12,27 @@ export interface EmailProvider {
   send(message: EmailMessage): Promise<void>;
 }
 
+export type SmtpConfig = {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  fromEmail?: string;
+};
+
+function buildSmtpTransport(config: SmtpConfig) {
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  });
+}
+
 class SmtpProvider implements EmailProvider {
   private transport = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -65,4 +86,15 @@ export function getEmailProvider(): EmailProvider {
     return new SendgridProvider();
   }
   return new SmtpProvider();
+}
+
+export async function sendWithSmtpConfig(config: SmtpConfig, message: EmailMessage) {
+  const transport = buildSmtpTransport(config);
+  await transport.sendMail({
+    from: config.fromEmail ?? config.user,
+    to: message.to.join(","),
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+  });
 }
