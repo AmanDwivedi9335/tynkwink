@@ -86,6 +86,7 @@ export default function SmtpSettingsPage() {
   const [messageLoading, setMessageLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -197,6 +198,30 @@ export default function SmtpSettingsPage() {
     }
   };
 
+  const handleTest = async () => {
+    if (!tenantId) return;
+    setTesting(true);
+    setStatus(null);
+    setError(null);
+    try {
+      const payload: Record<string, string | number | boolean> = {
+        host: host.trim(),
+        port: Number(port),
+        secure,
+        username: username.trim(),
+      };
+      if (fromEmail.trim()) payload.fromEmail = fromEmail.trim();
+      if (password.trim()) payload.password = password.trim();
+      if (user?.email) payload.toEmail = user.email;
+      await api.post(`/api/tenants/${tenantId}/smtp-credentials/me/test`, payload);
+      setStatus(`Test email sent to ${user?.email ?? "your inbox"}.`);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? "Unable to send test email.");
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
     const date = new Date(value);
@@ -278,10 +303,20 @@ export default function SmtpSettingsPage() {
             fullWidth
             helperText={myCredential?.passwordSet ? "Leave blank to keep your existing password." : "Required for first-time setup."}
           />
+          <TextField
+            label="Test email recipient"
+            value={user?.email ?? ""}
+            fullWidth
+            disabled
+            helperText="We'll send a test message to your login email."
+          />
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <Button variant="contained" onClick={handleSave} disabled={saving || loading}>
               {saving ? "Saving..." : "Save SMTP Settings"}
+            </Button>
+            <Button variant="outlined" onClick={handleTest} disabled={testing || loading}>
+              {testing ? "Sending test..." : "Send test email"}
             </Button>
             <Button variant="outlined" color="error" onClick={handleDelete} disabled={deleting || !myCredential}>
               {deleting ? "Removing..." : "Remove SMTP Settings"}
