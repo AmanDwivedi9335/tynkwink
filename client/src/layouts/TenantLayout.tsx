@@ -32,6 +32,7 @@ import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
 import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
 import MarkEmailUnreadOutlinedIcon from "@mui/icons-material/MarkEmailUnreadOutlined";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import MonetizationOnOutlinedIcon from "@mui/icons-material/MonetizationOnOutlined";
@@ -52,6 +53,7 @@ const navItems = [
   { label: "Integrations", icon: <ExtensionOutlinedIcon />, to: "/app/integrations" },
   { label: "Lead Inbox", icon: <InboxOutlinedIcon />, to: "/app/lead-inbox" },
   { label: "Gmail Lead Sources", icon: <MarkEmailUnreadOutlinedIcon />, to: "/app/settings/gmail" },
+  { label: "SMTP Settings", icon: <MailOutlineIcon />, to: "/app/settings/smtp" },
   { label: "Approval Settings", icon: <TaskAltOutlinedIcon />, to: "/app/settings/approvals" },
   { label: "Staff & Permissions", icon: <ManageAccountsOutlinedIcon />, to: "/app/staff" },
   { label: "Tenant Access Guide", icon: <HelpOutlineOutlinedIcon />, to: "/app/access-guide" },

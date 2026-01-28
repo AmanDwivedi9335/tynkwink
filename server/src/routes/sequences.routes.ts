@@ -28,6 +28,7 @@ const emailConfigSchema = z.object({
   subject: z.string().trim().min(1, "Email subject is required"),
   body: z.string().trim().min(1, "Email body is required"),
   fromAccountId: z.string().trim().optional(),
+  smtpCredentialId: z.string().trim().optional(),
 });
 
 const whatsappConfigSchema = z.object({
