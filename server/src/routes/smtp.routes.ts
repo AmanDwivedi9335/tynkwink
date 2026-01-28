@@ -74,7 +74,7 @@ router.get("/tenants/:tenantId/smtp-credentials", requireAuth, requireTenantCont
         user: credential.user,
         messageCount: stats?.count ?? 0,
         lastMessageAt: stats?.lastMessageAt ?? null,
-        passwordSet: true,
+        passwordSet: Boolean(credential.encryptedPassword),
       };
     }),
   });
@@ -99,6 +99,10 @@ router.put("/tenants/:tenantId/smtp-credentials/me", requireAuth, requireTenantC
   const encryptedPassword = parsed.data.password
     ? encryptSecret(parsed.data.password)
     : existing?.encryptedPassword;
+
+  if (!encryptedPassword) {
+    return res.status(400).json({ message: "SMTP password is required to save these settings" });
+  }
 
   const fromEmail = parsed.data.fromEmail ?? parsed.data.username;
 
@@ -139,7 +143,7 @@ router.put("/tenants/:tenantId/smtp-credentials/me", requireAuth, requireTenantC
       isActive: credential.isActive,
       createdAt: credential.createdAt,
       updatedAt: credential.updatedAt,
-      passwordSet: true,
+      passwordSet: Boolean(credential.encryptedPassword),
     },
   });
 });
@@ -160,7 +164,16 @@ router.post("/tenants/:tenantId/smtp-credentials/me/test", requireAuth, requireT
     return res.status(400).json({ message: "SMTP password is required for first-time setup" });
   }
 
-  const resolvedPassword = parsed.data.password ? parsed.data.password : existing ? decryptSecret(existing.encryptedPassword) : null;
+  let resolvedPassword: string | null = null;
+  if (parsed.data.password) {
+    resolvedPassword = parsed.data.password;
+  } else if (existing?.encryptedPassword) {
+    try {
+      resolvedPassword = decryptSecret(existing.encryptedPassword);
+    } catch (error) {
+      return res.status(400).json({ message: "Stored SMTP password could not be decrypted. Please re-enter it." });
+    }
+  }
 
   if (!resolvedPassword) {
     return res.status(400).json({ message: "SMTP password is required to run a test" });
@@ -184,12 +197,39 @@ router.post("/tenants/:tenantId/smtp-credentials/me/test", requireAuth, requireT
       }
     );
 
-    if (existing) {
+    let credentialForLog = existing;
+    if (parsed.data.password) {
+      credentialForLog = await prisma.smtpCredential.upsert({
+        where: { tenantId_userId: { tenantId, userId } },
+        create: {
+          tenantId,
+          userId,
+          host: parsed.data.host,
+          port: parsed.data.port,
+          secure: parsed.data.secure ?? false,
+          username: parsed.data.username,
+          encryptedPassword: encryptSecret(parsed.data.password),
+          fromEmail: parsed.data.fromEmail ?? parsed.data.username,
+          isActive: true,
+        },
+        update: {
+          host: parsed.data.host,
+          port: parsed.data.port,
+          secure: parsed.data.secure ?? false,
+          username: parsed.data.username,
+          encryptedPassword: encryptSecret(parsed.data.password),
+          fromEmail: parsed.data.fromEmail ?? parsed.data.username,
+          isActive: true,
+        },
+      });
+    }
+
+    if (credentialForLog) {
       await prisma.smtpMessageLog.create({
         data: {
           tenantId,
           userId,
-          smtpCredentialId: existing.id,
+          smtpCredentialId: credentialForLog.id,
           toEmail: parsed.data.toEmail ?? parsed.data.username,
           subject: "SMTP settings test",
           body: "Your SMTP settings are working.",
