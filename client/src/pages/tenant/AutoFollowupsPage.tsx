@@ -781,6 +781,7 @@ export default function AutoFollowupsPage() {
                           }))
                         }
                       >
+                        <MenuItem value="">Use connected SMTP account</MenuItem>
                         {gmailIntegrations.map((integration) => (
                           <MenuItem key={integration.id} value={integration.id}>
                             {integration.gmailAddress}

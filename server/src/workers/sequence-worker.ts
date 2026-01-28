@@ -146,13 +146,13 @@ async function handleJob(job: Awaited<ReturnType<typeof lockDueJobs>>[number]) {
         throw new Error("Missing lead email");
       }
       const fromAccountId = (job.actionConfig as any).fromAccountId ?? null;
-      if (fromAccountId) {
-        const integration = await prisma.gmailIntegration.findFirst({
-          where: { id: fromAccountId, tenantId: job.tenantId },
-        });
-        if (!integration) {
-          throw new Error("Email integration missing");
-        }
+      const integration = fromAccountId
+        ? await prisma.gmailIntegration.findFirst({
+            where: { id: fromAccountId, tenantId: job.tenantId },
+          })
+        : null;
+      if (fromAccountId && !integration) {
+        throw new Error("Email integration missing");
       }
       const subject = renderTemplate((job.actionConfig as any).subject ?? "", templateContext);
       const body = renderTemplate((job.actionConfig as any).body ?? "", templateContext);
@@ -162,11 +162,22 @@ async function handleJob(job: Awaited<ReturnType<typeof lockDueJobs>>[number]) {
         ? await prisma.smtpCredential.findFirst({
             where: { id: smtpCredentialId, tenantId: job.tenantId, isActive: true },
           })
-        : fallbackUserId
+        : integration
           ? await prisma.smtpCredential.findFirst({
-              where: { tenantId: job.tenantId, userId: fallbackUserId, isActive: true },
+              where: {
+                tenantId: job.tenantId,
+                isActive: true,
+                OR: [
+                  { username: integration.gmailAddress },
+                  { fromEmail: integration.gmailAddress },
+                ],
+              },
             })
-          : null;
+          : fallbackUserId
+            ? await prisma.smtpCredential.findFirst({
+                where: { tenantId: job.tenantId, userId: fallbackUserId, isActive: true },
+              })
+            : null;
 
       if (smtpCredential) {
         try {
