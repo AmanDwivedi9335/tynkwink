@@ -4,6 +4,7 @@ import { gmailSyncQueue, leadImportQueue, digestQueue } from "./queues/queues";
 import { syncGmailIntegration } from "./services/gmailSyncService";
 import { importLeadFromInbox } from "./services/leadImportService";
 import { sendApprovalDigests } from "./services/digestService";
+import { startSequenceWorker } from "./workers/sequence-worker";
 
 const connection = {
   host: process.env.REDIS_HOST ?? "127.0.0.1",
@@ -12,6 +13,10 @@ const connection = {
 };
 
 export const startWorkers = () => {
+  if (process.env.START_SEQUENCE_WORKER !== "false") {
+    void startSequenceWorker();
+  }
+
   new Worker(
     "gmail-sync",
     async (job) => {

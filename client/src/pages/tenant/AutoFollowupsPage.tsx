@@ -93,6 +93,15 @@ type LogSummary = {
   job?: { attemptCount: number; maxAttempts: number; status: string };
 };
 
+const templateVariables = [
+  { label: "Lead name", token: "{{lead.name}}" },
+  { label: "Lead email", token: "{{lead.email}}" },
+  { label: "Lead phone", token: "{{lead.phone}}" },
+  { label: "Owner name", token: "{{owner.name}}" },
+  { label: "Owner email", token: "{{owner.email}}" },
+  { label: "Tenant name", token: "{{tenant.name}}" },
+];
+
 const defaultStep = (order: number): SequenceStepForm => ({
   stepOrder: order,
   delayValue: 10,
@@ -130,6 +139,29 @@ export default function AutoFollowupsPage() {
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadSummary | null>(null);
   const [logsDialogOpen, setLogsDialogOpen] = useState(false);
+
+  const appendToken = (value: string | undefined, token: string) => {
+    const trimmed = value?.trim() ?? "";
+    if (!trimmed) return token;
+    return `${value}${value.endsWith(" ") ? "" : " "}${token}`;
+  };
+
+  const insertVariableToken = (stepOrder: number, field: string, token: string) => {
+    setBuilderState((prev) => ({
+      ...prev,
+      steps: prev.steps.map((entry) =>
+        entry.stepOrder === stepOrder
+          ? {
+              ...entry,
+              actionConfig: {
+                ...entry.actionConfig,
+                [field]: appendToken(entry.actionConfig[field] ?? "", token),
+              },
+            }
+          : entry
+      ),
+    }));
+  };
 
   const loadSequences = async () => {
     setLoading(true);
@@ -669,6 +701,22 @@ export default function AutoFollowupsPage() {
                 </Stack>
                 {step.actionType === "EMAIL" ? (
                   <Stack spacing={2}>
+                    <Stack spacing={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Variable suggestions
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {templateVariables.map((variable) => (
+                          <Chip
+                            key={`${step.stepOrder}-email-${variable.token}`}
+                            label={variable.label}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => insertVariableToken(step.stepOrder, "subject", variable.token)}
+                          />
+                        ))}
+                      </Stack>
+                    </Stack>
                     <TextField
                       label="Subject"
                       value={step.actionConfig.subject ?? ""}
@@ -701,6 +749,22 @@ export default function AutoFollowupsPage() {
                       multiline
                       rows={3}
                     />
+                    <Stack spacing={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Message variables
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {templateVariables.map((variable) => (
+                          <Chip
+                            key={`${step.stepOrder}-email-body-${variable.token}`}
+                            label={variable.token}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => insertVariableToken(step.stepOrder, "body", variable.token)}
+                          />
+                        ))}
+                      </Stack>
+                    </Stack>
                     <FormControl fullWidth>
                       <InputLabel>Email account</InputLabel>
                       <Select
@@ -728,6 +792,22 @@ export default function AutoFollowupsPage() {
                 ) : null}
                 {step.actionType === "WHATSAPP" ? (
                   <Stack spacing={2}>
+                    <Stack spacing={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Message variables
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {templateVariables.map((variable) => (
+                          <Chip
+                            key={`${step.stepOrder}-whatsapp-${variable.token}`}
+                            label={variable.label}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => insertVariableToken(step.stepOrder, "messageText", variable.token)}
+                          />
+                        ))}
+                      </Stack>
+                    </Stack>
                     <TextField
                       label="Message text"
                       value={step.actionConfig.messageText ?? ""}
@@ -758,6 +838,22 @@ export default function AutoFollowupsPage() {
                 ) : null}
                 {step.actionType === "CALL_REMINDER" ? (
                   <Stack spacing={2}>
+                    <Stack spacing={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Reminder variables
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {templateVariables.map((variable) => (
+                          <Chip
+                            key={`${step.stepOrder}-call-${variable.token}`}
+                            label={variable.label}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => insertVariableToken(step.stepOrder, "title", variable.token)}
+                          />
+                        ))}
+                      </Stack>
+                    </Stack>
                     <TextField
                       label="Title"
                       value={step.actionConfig.title ?? ""}
@@ -790,6 +886,22 @@ export default function AutoFollowupsPage() {
                       multiline
                       rows={2}
                     />
+                    <Stack spacing={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Description variables
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {templateVariables.map((variable) => (
+                          <Chip
+                            key={`${step.stepOrder}-call-desc-${variable.token}`}
+                            label={variable.token}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => insertVariableToken(step.stepOrder, "description", variable.token)}
+                          />
+                        ))}
+                      </Stack>
+                    </Stack>
                     <FormControl fullWidth>
                       <InputLabel>Assign to</InputLabel>
                       <Select

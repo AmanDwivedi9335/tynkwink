@@ -335,7 +335,7 @@ export async function runSequenceWorkerOnce() {
   }
 }
 
-async function startWorker() {
+export async function startSequenceWorker() {
   await runSequenceWorkerOnce();
   let running = false;
   setInterval(async () => {
@@ -350,5 +350,5 @@ async function startWorker() {
 }
 
 if (require.main === module) {
-  void startWorker();
+  void startSequenceWorker();
 }
