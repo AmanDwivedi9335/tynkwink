@@ -74,7 +74,7 @@ router.get("/tenants/:tenantId/smtp-credentials", requireAuth, requireTenantCont
         user: credential.user,
         messageCount: stats?.count ?? 0,
         lastMessageAt: stats?.lastMessageAt ?? null,
-        passwordSet: true,
+        passwordSet: Boolean(credential.encryptedPassword),
       };
     }),
   });
@@ -99,6 +99,10 @@ router.put("/tenants/:tenantId/smtp-credentials/me", requireAuth, requireTenantC
   const encryptedPassword = parsed.data.password
     ? encryptSecret(parsed.data.password)
     : existing?.encryptedPassword;
+
+  if (!encryptedPassword) {
+    return res.status(400).json({ message: "SMTP password is required to save these settings" });
+  }
 
   const fromEmail = parsed.data.fromEmail ?? parsed.data.username;
 
@@ -139,7 +143,7 @@ router.put("/tenants/:tenantId/smtp-credentials/me", requireAuth, requireTenantC
       isActive: credential.isActive,
       createdAt: credential.createdAt,
       updatedAt: credential.updatedAt,
-      passwordSet: true,
+      passwordSet: Boolean(credential.encryptedPassword),
     },
   });
 });
@@ -160,7 +164,16 @@ router.post("/tenants/:tenantId/smtp-credentials/me/test", requireAuth, requireT
     return res.status(400).json({ message: "SMTP password is required for first-time setup" });
   }
 
-  const resolvedPassword = parsed.data.password ? parsed.data.password : existing ? decryptSecret(existing.encryptedPassword) : null;
+  let resolvedPassword: string | null = null;
+  if (parsed.data.password) {
+    resolvedPassword = parsed.data.password;
+  } else if (existing?.encryptedPassword) {
+    try {
+      resolvedPassword = decryptSecret(existing.encryptedPassword);
+    } catch (error) {
+      return res.status(400).json({ message: "Stored SMTP password could not be decrypted. Please re-enter it." });
+    }
+  }
 
   if (!resolvedPassword) {
     return res.status(400).json({ message: "SMTP password is required to run a test" });
