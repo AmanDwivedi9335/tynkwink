@@ -304,13 +304,7 @@ export default function SmtpSettingsPage() {
             label="SMTP password"
             type="password"
             value={password}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              setPassword(nextValue);
-              if (nextValue) {
-                setPasswordTouched(true);
-              }
-            }}
+            onChange={(event) => setPassword(event.target.value)}
             onFocus={() => setPasswordTouched(true)}
             fullWidth
             helperText={myCredential?.passwordSet ? "Leave blank to keep your existing password." : "Required for first-time setup."}
